@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { moneyAmount, placeOrderRequest, priceTick } from './schemas';
+import {
+  MAX_TICKS_PER_FEED_RESPONSE,
+  moneyAmount,
+  placeOrderRequest,
+  priceFeedResponse,
+  priceTick,
+} from './schemas';
 
 describe('moneyAmount', () => {
   it.each(['1', '5000', '5000.5', '5000.50', '999999999999.99'])('accepts %s', (v) => {
@@ -46,5 +52,23 @@ describe('priceTick', () => {
   it('rejects lowercase or injected symbols', () => {
     expect(priceTick.safeParse({ symbol: 'btc', price: '1', timestamp: 1 }).success).toBe(false);
     expect(priceTick.safeParse({ symbol: "BTC';--", price: '1', timestamp: 1 }).success).toBe(false);
+  });
+
+  it.each(['0', '0.0000', '-1', '1e3', ''])('rejects price %j', (price) => {
+    expect(priceTick.safeParse({ symbol: 'BTC', price, timestamp: 1 }).success).toBe(false);
+  });
+});
+
+describe('priceFeedResponse', () => {
+  const tick = { symbol: 'BTC', price: '1', timestamp: 1 };
+
+  it('caps the number of ticks', () => {
+    const ticks = Array.from({ length: MAX_TICKS_PER_FEED_RESPONSE + 1 }, () => tick);
+    expect(priceFeedResponse.safeParse({ ticks }).success).toBe(false);
+  });
+
+  it('requires a ticks array', () => {
+    expect(priceFeedResponse.safeParse({ ticks: tick }).success).toBe(false);
+    expect(priceFeedResponse.safeParse([tick]).success).toBe(false);
   });
 });

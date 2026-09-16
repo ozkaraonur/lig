@@ -18,18 +18,19 @@
 
 ## İlk tehdit listesi
 
-| #   | STRIDE                 | Tehdit                                                              | Planlanan kontrol                                                                                                                                                        | Durum                      |
-| --- | ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| T1  | Spoofing               | Sahte ya da çalınmış oyuncu token'ı ile başka oyuncu olarak giriş   | Sadece RS256; `iss` ile platform bulunur ve yalnız onun anahtarıyla doğrulanır; `aud`, `exp`, `iat` kontrolü; ömür ≤ 5 dk; `jti` tek kullanım (Redis); genel hata mesajı | Faz 1 ✓                    |
-| T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)           | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur                                                                                                     | Faz 1                      |
-| T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition) | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                 | Faz 1                      |
-| T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)          | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                     | Faz 1–4                    |
-| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                         | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                  | Faz 2                      |
-| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                  | Güçlü parola hash'i (argon2id), zorunlu MFA, oturum süresi, giriş denemesi sınırı                                                                                        | Faz 2                      |
-| T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                | Değiştirilemez denetim kaydı (NFR-07)                                                                                                                                    | Faz 2                      |
-| T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                               | Faz 3                      |
-| T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                               | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                                                                                                          | Giriş ✓, diğerleri Faz 1–4 |
-| T10 | Information disclosure | Secret'ların repoya ya da loga sızması                              | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması                                                                                               | Faz 0 ✓                    |
+| #   | STRIDE                 | Tehdit                                                                | Planlanan kontrol                                                                                                                                                               | Durum                        |
+| --- | ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| T1  | Spoofing               | Sahte ya da çalınmış oyuncu token'ı ile başka oyuncu olarak giriş     | Sadece RS256; `iss` ile platform bulunur ve yalnız onun anahtarıyla doğrulanır; `aud`, `exp`, `iat` kontrolü; ömür ≤ 5 dk; `jti` tek kullanım (Redis); genel hata mesajı        | Faz 1 ✓                      |
+| T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)             | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur                                                                                                            | Kısmen: fiyat alıcı ✓        |
+| T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition)   | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                        | Faz 1                        |
+| T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)            | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                            | Oyuncu lig uçları ✓, Faz 2–4 |
+| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                           | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                         | Faz 2                        |
+| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                    | Güçlü parola hash'i (argon2id), zorunlu MFA, oturum süresi, giriş denemesi sınırı                                                                                               | Faz 2                        |
+| T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                  | Değiştirilemez denetim kaydı (NFR-07)                                                                                                                                           | Faz 2                        |
+| T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                  | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                                      | Faz 3                        |
+| T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                                 | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                                                                                                                 | Giriş ✓, diğerleri Faz 1–4   |
+| T10 | Information disclosure | Secret'ların repoya ya da loga sızması                                | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması                                                                                                      | Faz 0 ✓                      |
+| T11 | Tampering / SSRF       | Fiyat akışı ile sahte fiyat ya da API'yi iç ağa istek atmaya yöneltme | Fiyat adresi yalnızca kurulumda girilir, üretimde sadece https, yönlendirme takip edilmez, 2 sn zaman aşımı, 256 KB sınırı; her fiyat ayrı doğrulanır, eski fiyat yeniyi ezemez | Faz 1 ✓                      |
 
 ## T1 uygulama ayrıntısı (Faz 1)
 
@@ -63,3 +64,30 @@
 - `SameSite=Strict` çerezin iOS/Android WebView'larda davranışı gerçek cihazda test edilmeli.
 - Giriş sınırı IP başına. Aynı NAT arkasındaki çok sayıda kullanıcı (mobil operatör) etkilenebilir; üretimde tenant + IP bazlı olmalı.
 - `trustProxy` kapalı; üretimde yük dengeleyici arkasında gerçek istemci IP'si için ayarlanmalı.
+
+## Fiyat akışı ve ligler: uygulama ayrıntısı (Faz 1)
+
+**Kod:** `apps/api/src/prices/`, `apps/api/src/leagues/`. **Testler:** birim ve uç testleri + `*.int.test.ts` (gerçek PostgreSQL ve Redis).
+
+| Saldırı ya da hata                                           | Sonuç                                                     | Test |
+| ------------------------------------------------------------ | --------------------------------------------------------- | ---- |
+| Akışta lig varlığı olmayan sembol                            | Saklanmaz                                                 | ✓    |
+| Sıfır, negatif, bilimsel gösterimli ya da bozuk fiyat        | O fiyat atlanır, diğerleri saklanır                       | ✓    |
+| Gelecek zaman damgalı fiyat (2 sn toleransın dışında)        | Saklanmaz                                                 | ✓    |
+| Eski fiyatı tekrar gönderme / geç gelen eski fiyat           | Son fiyat geriye gitmez (Redis içinde tek adımda kontrol) | ✓    |
+| Akış kesilirse                                               | 5 sn sonra fiyat "bayat" işaretlenir, tek uyarı logu      | ✓    |
+| Akış adresinden iç adrese yönlendirme (169.254.169.254 gibi) | Reddedilir                                                | ✓    |
+| `file:`, `gopher:` adresleri, adreste kullanıcı adı/parola   | Reddedilir                                                | ✓    |
+| Yavaş ya da çok büyük yanıt                                  | 2 sn / 256 KB'de kesilir                                  | ✓    |
+| Başka platformun ligini listeleme, açma ya da katılma        | Listede yok; açma ve katılma 404, "yok" ile aynı yanıt    | ✓    |
+| Taslak ya da arkadaş ligine katılma                          | 404                                                       | ✓    |
+| Bitmiş lige katılma                                          | 409 `LEAGUE_NOT_ACTIVE`                                   | ✓    |
+| Aynı katılma isteğini 20 kez paralel gönderme                | Tek üyelik, tek bakiye                                    | ✓    |
+| Katılırken gövdede bakiye gönderme                           | Yok sayılır; bakiye her zaman ligin başlangıç tutarı      | ✓    |
+| Yönetici ligi kapattıktan hemen sonra katılma (eski okuma)   | Koşul yazma anında kontrol edilir, reddedilir             | ✓    |
+| Adres çubuğundan lig kimliği yerine yol (`../auth/logout`)   | Web tarafında kodlanır; API 400                           | ✓    |
+
+**Bilinen açık konular:**
+
+- Fiyat akışının kimliği şimdilik yalnızca adres ve TLS'e dayanıyor. Gerçek platformla entegrasyonda istek imzası ya da API anahtarı eklenmeli.
+- Oyuncu başına istek sınırı lig uçlarında henüz yok (T9); emir motoruyla birlikte gelecek.

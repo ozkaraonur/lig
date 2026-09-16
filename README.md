@@ -25,11 +25,13 @@ npm run db:migrate          # tabloları oluşturur
 npm run dev                 # API, web ve sahte platform birlikte çalışır
 ```
 
-İlk kurulumda, `npm run dev` açıkken **ikinci bir terminalde** sahte platformu müşteri olarak kaydet:
+İlk kurulumda, `npm run dev` açıkken **ikinci bir terminalde** sahte platformu müşteri olarak kaydet. Bu komut varlıkları ve örnek ligleri de oluşturur; tekrar çalıştırmak güvenlidir:
 
 ```powershell
 npm run db:seed
 ```
+
+Fiyatlar seed'den sonra en geç 30 saniye içinde akmaya başlar.
 
 Çalıştığını kontrol et:
 
@@ -44,13 +46,14 @@ Durdurmak için terminalde `Ctrl + C`, altyapıyı kapatmak için `npm run infra
 
 ## Sık kullanılan komutlar
 
-| Komut                 | Ne yapar                                                    |
-| --------------------- | ----------------------------------------------------------- |
-| `npm run check`       | Format, lint, typecheck, test ve build. PR öncesi çalıştır. |
-| `npm run test`        | Bütün testler                                               |
-| `npm run db:generate` | Şema değiştiyse yeni migration üretir                       |
-| `npm run db:migrate`  | Migration'ları veritabanına uygular                         |
-| `npm run format`      | Kodu otomatik formatlar                                     |
+| Komut                          | Ne yapar                                                                                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------- |
+| `npm run check`                | Format, lint, typecheck, test ve build. PR öncesi çalıştır.                              |
+| `npm run test`                 | Birim ve uç testleri (veritabanı gerekmez)                                               |
+| `npm run test:int -w @lig/api` | Gerçek PostgreSQL ve Redis ile entegrasyon testleri (`infra:up` ve `db:migrate` sonrası) |
+| `npm run db:generate`          | Şema değiştiyse yeni migration üretir                                                    |
+| `npm run db:migrate`           | Migration'ları veritabanına uygular                                                      |
+| `npm run format`               | Kodu otomatik formatlar                                                                  |
 
 ## Repo yapısı
 

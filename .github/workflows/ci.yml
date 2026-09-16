@@ -31,9 +31,9 @@ jobs:
       - run: npm run build
 
   migrations:
-    name: Database migrations
+    name: Database migrations and integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:17-alpine
@@ -46,8 +46,16 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U lig -d lig"
           --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       DATABASE_URL: postgres://lig:lig_ci_password@localhost:5432/lig
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -61,6 +69,8 @@ jobs:
           git diff --exit-code -- apps/api/drizzle || (echo "Şema değişmiş ama migration üretilmemiş: npm run db:generate" && exit 1)
       - name: Migrations apply to an empty database
         run: npm run db:migrate -w @lig/api
+      - name: Integration tests (real PostgreSQL and Redis)
+        run: npm run test:int -w @lig/api
 
   security:
     name: Secret scan and dependency audit

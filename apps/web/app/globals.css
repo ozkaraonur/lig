@@ -54,3 +54,125 @@ button {
   cursor: pointer;
   align-self: flex-start;
 }
+
+h1,
+h2 {
+  margin: 0;
+}
+
+h2 {
+  font-size: 1rem;
+  margin-top: 12px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.league-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.card:hover {
+  outline: 1px solid var(--muted);
+}
+
+.phase-ended {
+  opacity: 0.6;
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: #2a3040;
+  color: var(--muted);
+}
+
+.badge-running {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.badge-joined {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.big {
+  font-size: 1.6rem;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  align-self: stretch;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+button.link {
+  border: none;
+  padding: 0;
+  font-weight: 400;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.prices {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.prices th,
+.prices td {
+  padding: 10px 4px;
+  border-bottom: 1px solid #232937;
+  text-align: left;
+}
+
+.prices th {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.stale {
+  color: var(--muted);
+}

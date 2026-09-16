@@ -35,3 +35,15 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 
 - **Karar:** Token doğrulama ve imzalama için `jose`. Algoritma listesi her zaman açıkça `['RS256']` verilir.
 - **Neden:** Bağımlılıksız, standartlara uyumlu, anahtar türü ile algoritma uyuşmazlığını kendisi de reddediyor. Kendi JWT doğrulamamızı yazmak hataya en açık yol olurdu.
+
+## K-007 · Arka plan işleri API sürecinde, bayrakla
+
+- **Bağlam:** Fiyat alıcı saniyede bir çalışmalı; ileride görev ve lig kapanışı işleri de gelecek. Ayrı bir worker uygulaması mı, API içinde mi?
+- **Karar:** Aynı kod ve aynı paket; işler API sürecinin içinde, `WORKERS_ENABLED` ile açılıp kapanır. Yerelde açık. Üretimde API birden çok kopya çalışırken yalnızca bir kopyada (ya da ayrı bir "worker" kopyasında) açık olur.
+- **Sonuç:** Tek süreç, basit geliştirme. İki kopyada yanlışlıkla açık kalsa bile fiyat yazımı "yalnızca daha yeniyse" kuralıyla güvenli; ama iş yükü iki katına çıkar. Yük arttığında ayrı giriş noktasına (`worker.ts`) taşınır.
+
+## K-008 · Bellek içi sahteler ve gerçek veritabanı testleri birlikte
+
+- **Bağlam:** Servis ve uç testleri hızlı olsun diye bellek içi sahtelerle çalışıyor. Ama sahte, SQL'deki bir hatayı göremez.
+- **Karar:** Veritabanı ve Redis koduna ayrıca `*.int.test.ts` entegrasyon testleri yazılır (`npm run test:int`). CI'da gerçek PostgreSQL 17 ve Redis 7.4 ile çalışır. Tenant ayrımı, eşzamanlı istek ve kilit davranışı mutlaka burada sınanır.
+- **Sonuç:** İlk entegrasyon testi, sahte testlerin geçtiği bir hatayı yakaladı: Drizzle ham SQL içindeki kolonu tablo adı olmadan yazıyordu ve "üye sayısı" her ligde 0 dönüyordu. Ham SQL'de tablo adları artık açıkça yazılır.

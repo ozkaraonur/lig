@@ -10,6 +10,12 @@ const envSchema = z.object({
   API_HOST: z.string().min(1).default('127.0.0.1'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   WEB_ORIGIN: z.url().default('http://localhost:3000'),
+  /**
+   * Arka plan işleri (fiyat alıcı, ileride görev kuyruğu) bu süreçte çalışsın mı. Üretimde API'yi birden çok
+   * kopya çalıştırırken işler yalnızca birinde açık olur; aynı işi her kopya tekrar yapmaz (K-007).
+   */
+  WORKERS_ENABLED: z.stringbool().default(true),
+  PRICE_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(1000),
 });
 
 export type Env = z.infer<typeof envSchema>;

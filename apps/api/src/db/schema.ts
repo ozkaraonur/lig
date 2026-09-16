@@ -50,6 +50,11 @@ export const tenants = pgTable('tenants', {
   ssoIssuer: text().unique(),
   /** Platformun oyuncu token'larını imzaladığı anahtarın açık kısmı (PEM, RS256). */
   ssoPublicKey: text(),
+  /**
+   * Platformun fiyat uç noktası (FR-30). Yalnızca kurulumda bizim tarafımızdan girilir, yönetici panelinden
+   * değiştirilemez: değiştirilebilseydi API'yi iç ağdaki adreslere istek atmaya yöneltmek (SSRF) mümkün olurdu.
+   */
+  priceFeedUrl: text(),
   dataResidency: text().notNull().default('any'),
   createdAt: createdAt(),
 });

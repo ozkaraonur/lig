@@ -13,6 +13,17 @@ describe('parseEnv', () => {
     expect(env.API_HOST).toBe('127.0.0.1');
     expect(env.NODE_ENV).toBe('development');
     expect(env.WEB_ORIGIN).toBe('http://localhost:3000');
+    expect(env.WORKERS_ENABLED).toBe(true);
+    expect(env.PRICE_POLL_INTERVAL_MS).toBe(1000);
+  });
+
+  it('parses WORKERS_ENABLED as a boolean, not a truthy string', () => {
+    expect(parseEnv({ ...base, WORKERS_ENABLED: 'false' }).WORKERS_ENABLED).toBe(false);
+    expect(() => parseEnv({ ...base, WORKERS_ENABLED: 'maybe' })).toThrow('WORKERS_ENABLED');
+  });
+
+  it('refuses a price poll interval that would hammer the platform', () => {
+    expect(() => parseEnv({ ...base, PRICE_POLL_INTERVAL_MS: '10' })).toThrow('PRICE_POLL_INTERVAL_MS');
   });
 
   it('rejects a non-postgres database url', () => {

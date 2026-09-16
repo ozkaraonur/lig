@@ -11,6 +11,7 @@ import { importPKCS8, SignJWT } from 'jose';
 import { z } from 'zod';
 import { type SigningKeys } from './keys.js';
 import { LOGIN_PAGE_HTML, LOGIN_PAGE_SCRIPT } from './login-page.js';
+import { PriceSimulator } from './prices.js';
 
 export interface MockPlatformOptions {
   keys: SigningKeys;
@@ -18,6 +19,8 @@ export interface MockPlatformOptions {
   issuer: string;
   /** Giriş sonrası oyuncunun yönlendirileceği lig web uygulaması. */
   webUrl: string;
+  /** Yayınlanan fiyatlar. Verilmezse varsayılan piyasalarla yeni bir simülatör kullanılır. */
+  prices?: PriceSimulator;
   logger?: boolean;
 }
 
@@ -28,9 +31,11 @@ const tokenRequestBody = z.object({ displayName: displayNameSchema.optional() })
  * - GET  /                               → "oyuncu olarak gir" sayfası
  * - GET  /.well-known/lig-public-key     → açık anahtar (gerçekte platform bunu bize kurulumda verir)
  * - POST /players/:externalId/token      → imzalı, 5 dakikalık, tek kullanımlık oyuncu token'ı (FR-01)
+ * - GET  /prices                         → son fiyatlar; lig API'si saniyede bir çeker (FR-30)
  */
 export async function buildServer(options: MockPlatformOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 16 * 1024 });
+  const prices = options.prices ?? new PriceSimulator();
   const privateKey = await importPKCS8(options.keys.privateKeyPem, PLAYER_TOKEN_ALGORITHM);
 
   app.addHook('onSend', async (_request, reply) => {
@@ -68,6 +73,11 @@ export async function buildServer(options: MockPlatformOptions): Promise<Fastify
 
     return reply.header('cache-control', 'no-store').send({ token, expiresIn: MAX_PLAYER_TOKEN_TTL_SECONDS });
   });
+
+  // Saniyede bir çağrılır; her isteği loglamak terminali doldurur.
+  app.get('/prices', { logLevel: 'warn' }, async (_request, reply) =>
+    reply.header('cache-control', 'no-store').send({ ticks: prices.snapshot() }),
+  );
 
   app.get('/', async (_request, reply) =>
     reply

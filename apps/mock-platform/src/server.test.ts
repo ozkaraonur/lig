@@ -1,5 +1,5 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { PLAYER_TOKEN_AUDIENCE } from '@lig/shared';
+import { PLAYER_TOKEN_AUDIENCE, priceFeedResponse, priceTick } from '@lig/shared';
 import type { FastifyInstance } from 'fastify';
 import { decodeProtectedHeader, importSPKI, jwtVerify } from 'jose';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -88,5 +88,13 @@ describe('mock platform', () => {
     expect(res.headers['content-type']).toContain('text/html');
     expect(res.headers['content-security-policy']).toContain("default-src 'none'");
     expect(res.body).toContain('http%3A%2F%2Flocalhost%3A3000');
+  });
+
+  it('publishes schema-valid prices without caching', async () => {
+    const res = await app.inject({ method: 'GET', url: '/prices' });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    const { ticks } = priceFeedResponse.parse(res.json());
+    expect(ticks.map((t) => priceTick.parse(t).symbol)).toContain('BTC');
   });
 });

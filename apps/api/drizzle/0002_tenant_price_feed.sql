@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN "price_feed_url" text;

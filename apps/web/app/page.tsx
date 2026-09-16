@@ -3,6 +3,7 @@
 import { type PublicPlayer } from '@lig/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError, MOCK_PLATFORM_URL } from '../lib/api';
+import { LeagueList } from './league-list';
 
 type State =
   | { kind: 'loading' }
@@ -48,13 +49,15 @@ export default function PlayerHome() {
       )}
       {state.kind === 'player' && (
         <>
-          <p>
-            Hoş geldin, <strong>{state.player.displayName}</strong>.
-          </p>
-          <p>Ligler Faz 1&apos;in sonraki adımında burada olacak.</p>
-          <button type="button" onClick={logout}>
-            Çıkış yap
-          </button>
+          <div className="card-row">
+            <p>
+              Hoş geldin, <strong>{state.player.displayName}</strong>.
+            </p>
+            <button type="button" className="link" onClick={logout}>
+              Çıkış yap
+            </button>
+          </div>
+          <LeagueList />
         </>
       )}
     </main>

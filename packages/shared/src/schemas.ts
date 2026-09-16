@@ -26,7 +26,23 @@ export const priceTick = z.object({
     .min(1)
     .max(16)
     .regex(/^[A-Z0-9.]+$/),
-  price: z.string().regex(/^\d{1,18}(\.\d{1,10})?$/),
+  price: z
+    .string()
+    .regex(/^\d{1,18}(\.\d{1,10})?$/)
+    .refine((v) => /[1-9]/.test(v), 'Fiyat sıfırdan büyük olmalı'),
+  /** Fiyatın platformda oluştuğu an, milisaniye (Unix epoch). */
   timestamp: z.number().int().positive(),
 });
 export type PriceTick = z.infer<typeof priceTick>;
+
+/** Tek bir fiyat akışı yanıtında kabul edilen en fazla fiyat sayısı (T9). */
+export const MAX_TICKS_PER_FEED_RESPONSE = 500;
+
+/**
+ * Platformun fiyat uç noktasının döndüğü gövde (FR-30). Fiyatlar burada tek tek doğrulanmaz:
+ * bir sembolün bozuk gelmesi diğer bütün fiyatları düşürmesin diye alıcı her birini ayrı kontrol eder.
+ */
+export const priceFeedResponse = z.object({
+  ticks: z.array(z.unknown()).max(MAX_TICKS_PER_FEED_RESPONSE),
+});
+export type PriceFeedResponse = z.infer<typeof priceFeedResponse>;

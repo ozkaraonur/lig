@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadOrCreateKeys } from './keys.js';
+import { PriceSimulator } from './prices.js';
 import { buildServer } from './server.js';
 
 const rootEnv = fileURLToPath(new URL('../../../.env', import.meta.url));
@@ -13,7 +14,12 @@ const issuer = process.env.MOCK_PLATFORM_ISSUER ?? 'mock-platform';
 const webUrl = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
 
 const keys = loadOrCreateKeys(fileURLToPath(new URL('../keys/', import.meta.url)));
-const app = await buildServer({ keys, issuer, webUrl, logger: true });
+const prices = new PriceSimulator();
+const app = await buildServer({ keys, issuer, webUrl, prices, logger: true });
+
+// Fiyatlar saniyede bir hareket eder.
+const ticker = setInterval(() => prices.tick(), 1000);
+app.addHook('onClose', async () => clearInterval(ticker));
 
 try {
   await app.listen({ port, host });
