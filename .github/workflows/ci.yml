@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -49,8 +49,8 @@ jobs:
     env:
       DATABASE_URL: postgres://lig:lig_ci_password@localhost:5432/lig
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -66,14 +66,18 @@ jobs:
     name: Secret scan and dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # gitleaks, PR'lardaki commit listesini okumak için pull-requests izni ister.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
