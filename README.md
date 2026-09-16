@@ -9,7 +9,7 @@ Kripto platformları ve aracı kurumların uygulamalarına gömdüğü, sanal pa
 
 ## Gerekenler
 
-- **Node.js 22** (LTS)
+- **Node.js 24** (LTS)
 - **Docker Desktop**
 - **Git**
 

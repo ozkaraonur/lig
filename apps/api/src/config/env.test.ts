@@ -10,6 +10,7 @@ describe('parseEnv', () => {
   it('applies defaults', () => {
     const env = parseEnv(base);
     expect(env.API_PORT).toBe(4000);
+    expect(env.API_HOST).toBe('127.0.0.1');
     expect(env.NODE_ENV).toBe('development');
     expect(env.WEB_ORIGIN).toBe('http://localhost:3000');
   });

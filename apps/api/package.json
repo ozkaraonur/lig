@@ -33,6 +33,7 @@
     "@swc/cli": "0.8.1",
     "@swc/core": "1.16.2",
     "@types/pg": "8.23.1",
+    "chokidar": "5.0.0",
     "drizzle-kit": "0.31.10",
     "unplugin-swc": "1.6.0",
     "vitest": "3.2.7"

@@ -17,7 +17,7 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 ## K-003 · Kararlı ana sürümlere sabitleme
 
 - **Bağlam:** Eylül 2026 itibarıyla TypeScript 7, NestJS 12, Prisma 8 gibi yeni ana sürümler çıktı ya da çıkmak üzere.
-- **Karar:** TypeScript 5.9, NestJS 11, Next.js 16, Vitest 3, ESLint 9. Bütün sürümler tam sabit (`^` yok).
+- **Karar:** Node.js 24 LTS, TypeScript 5.9, NestJS 11, Next.js 16, Vitest 3, ESLint 9. Bütün sürümler tam sabit (`^` yok).
 - **Sonuç:** Öngörülebilir kurulum. Güncellemeler Dependabot PR'larıyla, testler geçtikten sonra alınır. Ana sürüm yükseltmeleri ayrı iş olarak planlanır.
 
 ## K-004 · API sunucusu Fastify

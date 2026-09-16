@@ -17,8 +17,8 @@ async function bootstrap(): Promise<void> {
   app.enableCors({ origin: env.WEB_ORIGIN, credentials: true });
   app.enableShutdownHooks();
 
-  await app.listen(env.API_PORT, '0.0.0.0');
-  Logger.log(`API listening on port ${env.API_PORT}`, 'Bootstrap');
+  await app.listen(env.API_PORT, env.API_HOST);
+  Logger.log(`API listening on http://${env.API_HOST}:${env.API_PORT}`, 'Bootstrap');
 }
 
 void bootstrap();
