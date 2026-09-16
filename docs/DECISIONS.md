@@ -24,3 +24,14 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 
 - **Karar:** NestJS, Express yerine Fastify adaptörüyle çalışır. Güvenlik başlıkları `@fastify/helmet`, istek gövdesi 64 KB ile sınırlı.
 - **Sonuç:** Daha yüksek istek kapasitesi (NFR-01). Fastify sürümü NestJS'in beklediği sürüme sabitlenir; iki farklı Fastify kopyası tip hatası verir.
+
+## K-005 · Oturum: sunucu tarafında, JWT değil
+
+- **Bağlam:** Platformun token'ı doğrulandıktan sonra oyuncunun oturumu nasıl taşınacak? Seçenekler: kendi JWT'mizi üretip tarayıcıya vermek ya da sunucuda oturum tutup tarayıcıya rastgele bir anahtar vermek.
+- **Karar:** Sunucu tarafı oturum. Tarayıcıya sadece rastgele 256 bit token, HttpOnly çerezde. Oturum verisi Redis'te, anahtar olarak token'ın SHA-256 özeti.
+- **Sonuç:** Çıkış ve oturum iptali anında geçerli olur (JWT'de süre dolana kadar geçerli kalırdı). Token JavaScript'e hiç gelmez. Bedeli her istekte bir Redis okuması; bu ölçekte önemsiz.
+
+## K-006 · JWT kütüphanesi: jose
+
+- **Karar:** Token doğrulama ve imzalama için `jose`. Algoritma listesi her zaman açıkça `['RS256']` verilir.
+- **Neden:** Bağımlılıksız, standartlara uyumlu, anahtar türü ile algoritma uyuşmazlığını kendisi de reddediyor. Kendi JWT doğrulamamızı yazmak hataya en açık yol olurdu.

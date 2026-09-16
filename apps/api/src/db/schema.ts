@@ -46,7 +46,9 @@ export const tenants = pgTable('tenants', {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
   theme: jsonb().notNull().default({}),
-  /** Platformun oyuncu token'larını imzaladığı anahtarın açık kısmı (PEM). */
+  /** Platformun oyuncu token'larındaki `iss` değeri. Token'ın hangi platforma ait olduğunu bu belirler. */
+  ssoIssuer: text().unique(),
+  /** Platformun oyuncu token'larını imzaladığı anahtarın açık kısmı (PEM, RS256). */
   ssoPublicKey: text(),
   dataResidency: text().notNull().default('any'),
   createdAt: createdAt(),

@@ -23,6 +23,16 @@ Tek repo, modüler yapı (bkz. DECISIONS.md, K-001). API içindeki modüller bir
 2. **Fiyat akışı:** Platform fiyatları yayınlar; API son fiyatı zaman damgasıyla Redis'te tutar (FR-30).
 3. **Gerçek işlem olayı:** Platform webhook ile bildirir; `external_event_id` tekrar oynatmayı engeller (FR-31).
 
+## Oyuncu girişi (FR-01)
+
+1. Oyuncu platform uygulamasında Ligler'e dokunur. Platform RS256 ile imzalı, 5 dakikalık, `jti`'li bir token üretir.
+2. Platform, modülü `WEB/auth/callback#token=...` adresiyle açar. Sayfa token'ı adres çubuğundan siler.
+3. Web, token'ı `POST /auth/session` ile API'ye gönderir.
+4. API: giriş denemesi sınırı → `iss` ile tenant bulma → imza ve claim doğrulama → `jti` tek kullanım (Redis) → oyuncuyu oluşturma/güncelleme → oturum.
+5. API, HttpOnly + Secure + SameSite=Strict `lig_session` çerezini döner. Sonraki bütün istekler bu çerezle yapılır.
+
+Kod: `apps/api/src/auth/`. Dış bağımlılıklar (`ports.ts`) arayüz olarak tanımlı; testlerde bellek içi sahteleri kullanılır.
+
 ## Veri
 
 - Şema: `apps/api/src/db/schema.ts`. Migration'lar: `apps/api/drizzle/` (düz SQL, review edilir).

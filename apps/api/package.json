@@ -11,9 +11,11 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "11.1.2",
     "@fastify/helmet": "13.1.1",
     "@lig/shared": "0.0.0",
     "@nestjs/common": "11.2.5",
@@ -22,6 +24,7 @@
     "drizzle-orm": "0.45.2",
     "fastify": "5.11.3",
     "ioredis": "5.11.1",
+    "jose": "6.2.12",
     "pg": "8.23.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
@@ -35,6 +38,7 @@
     "@types/pg": "8.23.1",
     "chokidar": "5.0.0",
     "drizzle-kit": "0.31.10",
+    "tsx": "4.23.13",
     "unplugin-swc": "1.6.0",
     "vitest": "3.2.7"
   }

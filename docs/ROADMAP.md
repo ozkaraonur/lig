@@ -10,12 +10,16 @@ Durum: `[x]` bitti · `[ ]` yapılacak. Parantezdeki kodlar tasarım dosyasında
 - [x] CI: format, lint, typecheck, test, build, migration kontrolü, secret taraması, bağımlılık denetimi
 - [x] Veritabanı şeması ve ilk migration
 - [x] API sağlık kontrolü, güvenlik başlıkları, ortam değişkeni doğrulaması
-- [ ] Tehdit modeli (Onur)
+- [x] Tehdit modeli taslağı
+- [ ] Tehdit modeli: giriş sistemi incelemesi (Onur)
 
 ## Faz 1 · Çekirdek, oyuncu tarafı
 
-- [ ] Sahte platform: JWT imzalama, fiyat akışı, gerçek işlem webhook'u
-- [ ] Giriş: token doğrulama, oyuncu oluşturma, oturum (FR-01)
+- [x] Sahte platform: oyuncu token'ı imzalama, giriş sayfası
+- [x] Giriş: token doğrulama, oyuncu oluşturma, oturum çerezi, çıkış, giriş denemesi sınırı (FR-01, T1)
+- [ ] Sahte platform: fiyat akışı (FR-30)
+- [ ] Sahte platform: gerçek işlem webhook'u (FR-31)
+- [ ] ESLint 10'a geçiş
 - [ ] Fiyat alıcı + Redis'te son fiyat (FR-30)
 - [ ] Lig listeleme, katılma, sanal bakiye (FR-02, FR-03)
 - [ ] Emir motoru: kurallar, idempotency, transaction, her hata dalına test (FR-04, FR-33)

@@ -25,6 +25,12 @@ npm run db:migrate          # tabloları oluşturur
 npm run dev                 # API, web ve sahte platform birlikte çalışır
 ```
 
+İlk kurulumda, `npm run dev` açıkken **ikinci bir terminalde** sahte platformu müşteri olarak kaydet:
+
+```powershell
+npm run db:seed
+```
+
 Çalıştığını kontrol et:
 
 | Servis         | Adres                        |
@@ -32,7 +38,7 @@ npm run dev                 # API, web ve sahte platform birlikte çalışır
 | API sağlık     | http://localhost:4000/health |
 | Oyuncu ekranı  | http://localhost:3000        |
 | Yönetim paneli | http://localhost:3000/admin  |
-| Sahte platform | http://localhost:4100/health |
+| Sahte platform | http://localhost:4100        |
 
 Durdurmak için terminalde `Ctrl + C`, altyapıyı kapatmak için `npm run infra:down`.
 

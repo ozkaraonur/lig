@@ -1,9 +1,9 @@
 import 'reflect-metadata';
-import helmet from '@fastify/helmet';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
 import { ENV, type Env } from './config/env';
 
 async function bootstrap(): Promise<void> {
@@ -13,8 +13,7 @@ async function bootstrap(): Promise<void> {
   );
   const env = app.get<Env>(ENV);
 
-  await app.register(helmet);
-  app.enableCors({ origin: env.WEB_ORIGIN, credentials: true });
+  await configureApp(app, { webOrigin: env.WEB_ORIGIN });
   app.enableShutdownHooks();
 
   await app.listen(env.API_PORT, env.API_HOST);

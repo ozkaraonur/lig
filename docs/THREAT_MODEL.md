@@ -18,15 +18,48 @@
 
 ## İlk tehdit listesi
 
-| #   | STRIDE                 | Tehdit                                                              | Planlanan kontrol                                                                 | Durum   |
-| --- | ---------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------- |
-| T1  | Spoofing               | Sahte ya da çalınmış oyuncu token'ı ile başka oyuncu olarak giriş   | RS256 imza doğrulama, `exp` ≤ 5 dk, `aud`/`iss` kontrolü, `jti` ile tek kullanım  | Faz 1   |
-| T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)           | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur              | Faz 1   |
-| T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition) | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key          | Faz 1   |
-| T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)          | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS              | Faz 1–4 |
-| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                         | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği           | Faz 2   |
-| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                  | Güçlü parola hash'i (argon2id), zorunlu MFA, oturum süresi, giriş denemesi sınırı | Faz 2   |
-| T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                | Değiştirilemez denetim kaydı (NFR-07)                                             | Faz 2   |
-| T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti        | Faz 3   |
-| T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                               | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                   | Faz 1–4 |
-| T10 | Information disclosure | Secret'ların repoya ya da loga sızması                              | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması        | Faz 0 ✓ |
+| #   | STRIDE                 | Tehdit                                                              | Planlanan kontrol                                                                                                                                                        | Durum                      |
+| --- | ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| T1  | Spoofing               | Sahte ya da çalınmış oyuncu token'ı ile başka oyuncu olarak giriş   | Sadece RS256; `iss` ile platform bulunur ve yalnız onun anahtarıyla doğrulanır; `aud`, `exp`, `iat` kontrolü; ömür ≤ 5 dk; `jti` tek kullanım (Redis); genel hata mesajı | Faz 1 ✓                    |
+| T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)           | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur                                                                                                     | Faz 1                      |
+| T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition) | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                 | Faz 1                      |
+| T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)          | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                     | Faz 1–4                    |
+| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                         | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                  | Faz 2                      |
+| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                  | Güçlü parola hash'i (argon2id), zorunlu MFA, oturum süresi, giriş denemesi sınırı                                                                                        | Faz 2                      |
+| T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                | Değiştirilemez denetim kaydı (NFR-07)                                                                                                                                    | Faz 2                      |
+| T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                               | Faz 3                      |
+| T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                               | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                                                                                                          | Giriş ✓, diğerleri Faz 1–4 |
+| T10 | Information disclosure | Secret'ların repoya ya da loga sızması                              | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması                                                                                               | Faz 0 ✓                    |
+
+## T1 uygulama ayrıntısı (Faz 1)
+
+**Kod:** `apps/api/src/auth/player-token.verifier.ts`. **Testler:** `player-token.verifier.test.ts` (19 test), `auth.e2e.test.ts` (10 test).
+
+| Saldırı                                                              | Sonuç                             | Test |
+| -------------------------------------------------------------------- | --------------------------------- | ---- |
+| `alg: none`                                                          | 401, imzaya bakılmadan reddedilir | ✓    |
+| HS256 ile açık anahtarı secret olarak kullanma (anahtar karışıklığı) | 401                               | ✓    |
+| İmzadan sonra payload değiştirme                                     | 401                               | ✓    |
+| B platformunun anahtarıyla A platformu adına token                   | 401                               | ✓    |
+| Bilinmeyen `iss`                                                     | 401                               | ✓    |
+| Başka hizmet için üretilmiş token (`aud`)                            | 401                               | ✓    |
+| Süresi dolmuş token (5 sn saat toleransı dışında)                    | 401                               | ✓    |
+| Gelecekte üretilmiş token                                            | 401                               | ✓    |
+| Ömrü 5 dakikadan uzun token                                          | 401                               | ✓    |
+| `jti` olmayan token                                                  | 401                               | ✓    |
+| Aynı token'ı ikinci kez kullanma                                     | 401                               | ✓    |
+| `sub` ya da `name` içinde HTML / geçersiz karakter                   | 401                               | ✓    |
+| Dakikada 20'den fazla giriş denemesi (IP başına)                     | 429 + `Retry-After`               | ✓    |
+| Sahte oturum çerezi                                                  | 401                               | ✓    |
+| Çıkıştan sonra eski çerezle istek                                    | 401                               | ✓    |
+
+**Oturum:** Rastgele 256 bit token, HttpOnly + Secure + SameSite=Strict çerezde. Redis'te token'ın kendisi değil SHA-256 özeti tutulur. Süre 8 saat. Yanıtlarda `Cache-Control: no-store`.
+
+**Loglar:** Reddedilen token'ın sebebi loglanır (`replayed`, `unsupported_alg` gibi), token'ın kendisi asla.
+
+**Bilinen açık konular (Onur'un incelemesi bekleniyor):**
+
+- Token, platformdan web uygulamasına URL fragment'ı (`#token=`) ile geçiyor. Fragment sunucuya ve loglara gitmez, sayfa açılır açılmaz adres çubuğundan silinir; ama tarayıcı eklentileri ve sayfadaki JavaScript görebilir. Tek kullanım ve 5 dakika ömür bu riski sınırlıyor. Alternatif: platformun token'ı POST ile göndermesi.
+- `SameSite=Strict` çerezin iOS/Android WebView'larda davranışı gerçek cihazda test edilmeli.
+- Giriş sınırı IP başına. Aynı NAT arkasındaki çok sayıda kullanıcı (mobil operatör) etkilenebilir; üretimde tenant + IP bazlı olmalı.
+- `trustProxy` kapalı; üretimde yük dengeleyici arkasında gerçek istemci IP'si için ayarlanmalı.
