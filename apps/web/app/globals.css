@@ -1,0 +1,36 @@
+:root {
+  --bg: #0d0f14;
+  --surface: #161a22;
+  --text: #eef1f6;
+  --muted: #8d96a8;
+  --accent: #c6f24e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+p {
+  color: var(--muted);
+  margin: 0;
+}

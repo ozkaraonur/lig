@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.next/
+coverage/
+next-env.d.ts
+*.tsbuildinfo
+
+# Ortam değişkenleri ve anahtarlar asla repoya girmez
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+apps/mock-platform/keys/
+
+# İşletim sistemi ve editör
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+npm-debug.log*
