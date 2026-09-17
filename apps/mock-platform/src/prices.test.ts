@@ -51,4 +51,13 @@ describe('PriceSimulator', () => {
       for (const tick of sim.snapshot()) expect(priceTick.safeParse(tick).success).toBe(true);
     }
   });
+
+  it('does not move prices or timestamps while paused', () => {
+    let now = 1_000;
+    const sim = new PriceSimulator(markets, seeded(3), () => now);
+    sim.paused = true;
+    now = 9_000;
+    sim.tick();
+    expect(sim.snapshot()).toEqual([{ symbol: 'BTC', price: '100.00', timestamp: 1_000 }]);
+  });
 });

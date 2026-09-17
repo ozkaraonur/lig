@@ -28,7 +28,7 @@ export function connectIntegration(): IntegrationContext {
   };
 }
 
-/** Teste özel, rastgele adlı bir tenant açar. Silindiğinde bağlı her şey cascade ile gider. */
+/** Teste özel, rastgele adlı bir tenant açar. */
 export async function createTenant(db: Database, name = 'test'): Promise<string> {
   const [row] = await db
     .insert(schema.tenants)
@@ -38,6 +38,16 @@ export async function createTenant(db: Database, name = 'test'): Promise<string>
   return row.id;
 }
 
+/**
+ * Tenant'ı bütün verisiyle siler. Sıra önemli: önce ligler (üyelik, pozisyon ve emirler cascade ile gider),
+ * sonra tenant. Doğrudan tenant silinirse varlıklar pozisyonlardan önce silinmeye çalışılır ve
+ * "restrict" kısıtı işlemi durdurur.
+ */
 export async function deleteTenants(db: Database, ids: string[]): Promise<void> {
-  for (const id of ids) await db.delete(schema.tenants).where(eq(schema.tenants.id, id));
+  for (const id of ids) {
+    await db.transaction(async (tx) => {
+      await tx.delete(schema.leagues).where(eq(schema.leagues.tenantId, id));
+      await tx.delete(schema.tenants).where(eq(schema.tenants.id, id));
+    });
+  }
 }

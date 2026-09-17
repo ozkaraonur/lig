@@ -7,13 +7,15 @@ import {
   type LeagueSummary,
 } from '@lig/shared';
 import type { FastifyReply } from 'fastify';
+import { PlayerRateLimit, PlayerRateLimitGuard, RATE_LIMITS } from '../auth/player-rate-limit.guard';
 import { type AuthenticatedSession, CurrentSession, SessionGuard } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { LeaguesService } from './leagues.service';
 
 /** Bütün lig uçları oturum ister ve oyuncunun tenant'ı ile sınırlıdır. Yanıtlar kişiye özel, önbelleğe alınmaz. */
 @Controller('leagues')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, PlayerRateLimitGuard)
+@PlayerRateLimit(RATE_LIMITS.leagueRead)
 export class LeaguesController {
   constructor(private readonly leagues: LeaguesService) {}
 
@@ -48,6 +50,7 @@ export class LeaguesController {
 
   /** İlk katılımda 201, zaten üyeyse 200 ve mevcut üyelik. Gövde almaz: bakiye istemciden gelmez. */
   @Post(':leagueId/join')
+  @PlayerRateLimit(RATE_LIMITS.join)
   async join(
     @CurrentSession() session: AuthenticatedSession,
     @Param('leagueId', new ZodValidationPipe(leagueIdParam)) leagueId: string,

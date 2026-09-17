@@ -33,6 +33,22 @@ describe('placeOrderRequest', () => {
     expect(placeOrderRequest.safeParse({ ...valid, side: 'short' }).success).toBe(false);
   });
 
+  it('accepts selling the whole position without an amount', () => {
+    const { amount: _omit, ...rest } = valid;
+    expect(placeOrderRequest.safeParse({ ...rest, side: 'sell', all: true }).success).toBe(true);
+  });
+
+  it.each([
+    ['buy all', { side: 'buy', all: true }],
+    ['sell with both amount and all', { side: 'sell', amount: '10', all: true }],
+    ['a client supplied price', { side: 'buy', amount: '10', price: '1' }],
+    ['a client supplied quantity', { side: 'buy', amount: '10', quantity: '1' }],
+    ['all: false', { side: 'sell', all: false }],
+  ])('rejects %s', (_label, overrides) => {
+    const { amount: _a, side: _s, ...rest } = valid;
+    expect(placeOrderRequest.safeParse({ ...rest, ...overrides }).success).toBe(false);
+  });
+
   it('requires an idempotency key', () => {
     const { idempotencyKey: _omit, ...rest } = valid;
     expect(placeOrderRequest.safeParse(rest).success).toBe(false);

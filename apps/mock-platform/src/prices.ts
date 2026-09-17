@@ -31,6 +31,8 @@ interface MarketState extends MarketConfig {
  */
 export class PriceSimulator {
   private readonly markets: MarketState[];
+  /** Durdurulunca fiyatlar ve zaman damgaları donar; lig API'si 5 sn sonra fiyatları bayat sayar. */
+  paused = false;
 
   constructor(
     markets: MarketConfig[] = DEFAULT_MARKETS,
@@ -42,6 +44,7 @@ export class PriceSimulator {
   }
 
   tick(): void {
+    if (this.paused) return;
     const timestamp = this.now();
     for (const market of this.markets) {
       const change = Math.exp(market.volatility * this.gaussian());

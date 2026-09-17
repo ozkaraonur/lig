@@ -3,8 +3,9 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { configureApp } from '../app.setup';
-import { InMemorySessionStore } from '../auth/fakes.test-utils';
-import { SESSION_STORE } from '../auth/ports';
+import { InMemoryRateLimiter, InMemorySessionStore } from '../auth/fakes.test-utils';
+import { PlayerRateLimitGuard, RATE_LIMITS } from '../auth/player-rate-limit.guard';
+import { RATE_LIMITER, SESSION_STORE } from '../auth/ports';
 import { SessionGuard } from '../auth/session.guard';
 import { CLOCK_MS } from '../common/clock';
 import { InMemoryPriceStore } from '../prices/fakes.test-utils';
@@ -83,6 +84,8 @@ beforeEach(async () => {
       LeaguesService,
       PriceService,
       SessionGuard,
+      PlayerRateLimitGuard,
+      { provide: RATE_LIMITER, useValue: new InMemoryRateLimiter() },
       { provide: CLOCK_MS, useValue: () => NOW.getTime() },
       { provide: LEAGUE_REPOSITORY, useValue: repo },
       { provide: PRICE_STORE, useValue: priceStore },
@@ -247,5 +250,18 @@ describe('POST /leagues/:id/join (FR-03)', () => {
       payload: { cash: '999999999' },
     });
     expect(res.json()).toMatchObject({ membership: { cash: '100000.00' } });
+  });
+});
+
+describe('rate limiting (T9)', () => {
+  it('limits joins per player, not per IP', async () => {
+    for (let i = 0; i < RATE_LIMITS.join.limit; i++) await join(running.id);
+    const limited = await join(running.id);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json()).toMatchObject({ code: 'RATE_LIMITED' });
+    expect(limited.headers['retry-after']).toBeDefined();
+
+    // Aynı IP'den gelen başka bir oyuncu etkilenmez.
+    expect((await join(otherTenant.id, cookieB)).statusCode).toBe(201);
   });
 });

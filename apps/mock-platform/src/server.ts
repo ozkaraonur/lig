@@ -32,6 +32,7 @@ const tokenRequestBody = z.object({ displayName: displayNameSchema.optional() })
  * - GET  /.well-known/lig-public-key     → açık anahtar (gerçekte platform bunu bize kurulumda verir)
  * - POST /players/:externalId/token      → imzalı, 5 dakikalık, tek kullanımlık oyuncu token'ı (FR-01)
  * - GET  /prices                         → son fiyatlar; lig API'si saniyede bir çeker (FR-30)
+ * - POST /debug/prices/pause | resume     → fiyat akışını dondurur / sürdürür (bayat fiyat testi için)
  */
 export async function buildServer(options: MockPlatformOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 16 * 1024 });
@@ -78,6 +79,17 @@ export async function buildServer(options: MockPlatformOptions): Promise<Fastify
   app.get('/prices', { logLevel: 'warn' }, async (_request, reply) =>
     reply.header('cache-control', 'no-store').send({ ticks: prices.snapshot() }),
   );
+
+  // Yalnızca test aracı: gerçek bir platformda böyle bir uç olmaz.
+  app.get('/debug/prices', async () => ({ paused: prices.paused }));
+  app.post('/debug/prices/pause', async () => {
+    prices.paused = true;
+    return { paused: true };
+  });
+  app.post('/debug/prices/resume', async () => {
+    prices.paused = false;
+    return { paused: false };
+  });
 
   app.get('/', async (_request, reply) =>
     reply

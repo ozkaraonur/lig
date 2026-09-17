@@ -6,15 +6,22 @@ import {
   type JoinLeagueResponse,
   type LeagueAssetPrice,
   type LeagueDetail,
+  type OrderView,
+  type PortfolioView,
 } from '@lig/shared';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError } from '../../../lib/api';
 import { formatDateRange, LEAGUE_PHASE_LABELS, LEAGUE_TYPE_LABELS } from '../../../lib/labels';
+import { PortfolioSection } from './portfolio-section';
+import { TradePanel } from './trade-panel';
 
-/** Fiyat tablosunun yenilenme aralığı. API fiyatı saniyede bir alır. */
+/** Fiyatların yenilenme aralığı. API fiyatı saniyede bir alır. */
 const PRICE_REFRESH_MS = 2_000;
+/** Portföy değerlemesinin yenilenme aralığı. Oyuncu başına okuma sınırının (dakikada 120) altında kalır. */
+const PORTFOLIO_REFRESH_MS = 4_000;
+const RECENT_ORDERS = 10;
 
 type State =
   | { kind: 'loading' }
@@ -27,6 +34,8 @@ export default function LeaguePage() {
   const leagueId = encodeURIComponent(params.leagueId);
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [prices, setPrices] = useState<LeagueAssetPrice[]>([]);
+  const [portfolio, setPortfolio] = useState<PortfolioView | null>(null);
+  const [orders, setOrders] = useState<OrderView[]>([]);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
@@ -46,6 +55,17 @@ export default function LeaguePage() {
     }
   }, [leagueId]);
 
+  const isMember = state.kind === 'ready' && state.league.joined;
+
+  const loadPortfolio = useCallback(async () => {
+    const [p, o] = await Promise.all([
+      apiFetch<{ portfolio: PortfolioView }>(`/leagues/${leagueId}/portfolio`),
+      apiFetch<{ orders: OrderView[] }>(`/leagues/${leagueId}/orders?limit=${RECENT_ORDERS}`),
+    ]);
+    setPortfolio(p.portfolio);
+    setOrders(o.orders);
+  }, [leagueId]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -59,6 +79,13 @@ export default function LeaguePage() {
     }, PRICE_REFRESH_MS);
     return () => clearInterval(timer);
   }, [leagueId, state.kind]);
+
+  useEffect(() => {
+    if (!isMember) return;
+    void loadPortfolio().catch(() => undefined);
+    const timer = setInterval(() => void loadPortfolio().catch(() => undefined), PORTFOLIO_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [isMember, loadPortfolio]);
 
   const join = async () => {
     setJoining(true);
@@ -107,11 +134,30 @@ export default function LeaguePage() {
         {league.memberCount} oyuncu
       </p>
 
-      {league.membership ? (
-        <div className="card">
-          <span className="muted">Sanal bakiyen</span>
-          <strong className="big">{formatCashTr(league.membership.cash)}</strong>
-        </div>
+      {league.joined ? (
+        portfolio ? (
+          <PortfolioSection
+            portfolio={portfolio}
+            orders={orders}
+            tradePanel={
+              league.phase === 'running' && (
+                <>
+                  <h2>İşlem yap</h2>
+                  <TradePanel
+                    leagueId={leagueId}
+                    assets={league.assets}
+                    prices={prices}
+                    cash={portfolio.cash}
+                    positions={portfolio.positions}
+                    onFilled={() => void loadPortfolio().catch(() => undefined)}
+                  />
+                </>
+              )
+            }
+          />
+        ) : (
+          <p>Portföy yükleniyor...</p>
+        )
       ) : league.canJoin ? (
         <div className="card">
           <span className="muted">Katılınca {formatCashTr(league.startingCash)} sanal bakiye alırsın.</span>
@@ -123,6 +169,8 @@ export default function LeaguePage() {
       ) : (
         <p>Bu lig katılıma kapalı.</p>
       )}
+
+      {league.joined && league.phase === 'upcoming' && <p>Lig başlayınca işlem yapabilirsin.</p>}
 
       <h2>Fiyatlar</h2>
       <table className="prices">

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ORDER_SIDES } from './domain';
 
 /**
  * Tutarlar string olarak taşınır: JavaScript number'ı para için güvenli değildir.
@@ -10,13 +9,23 @@ export const moneyAmount = z
   .regex(/^\d{1,12}(\.\d{1,2})?$/, 'Tutar en fazla 12 tam ve 2 ondalık basamaklı pozitif sayı olmalı')
   .refine((v) => Number(v) > 0, 'Tutar sıfırdan büyük olmalı');
 
-/** POST /leagues/:leagueId/orders gövdesi (FR-04, FR-33). */
-export const placeOrderRequest = z.object({
+const orderBase = {
   assetId: z.uuid(),
-  side: z.enum(ORDER_SIDES),
-  amount: moneyAmount,
+  /** İstemcinin her yeni emir için ürettiği anahtar. Ağ hatasında aynı anahtarla tekrar denenir (FR-33). */
   idempotencyKey: z.uuid(),
-});
+};
+
+/**
+ * POST /leagues/:leagueId/orders gövdesi (FR-04, FR-33).
+ * - Alış: `amount` TL'lik alır.
+ * - Satış: `amount` TL'lik satar ya da `all: true` ile pozisyonun tamamını satar.
+ * Fiyat ve miktar gövdede yoktur: sunucu belirler (T2).
+ */
+export const placeOrderRequest = z.union([
+  z.strictObject({ ...orderBase, side: z.literal('buy'), amount: moneyAmount }),
+  z.strictObject({ ...orderBase, side: z.literal('sell'), amount: moneyAmount }),
+  z.strictObject({ ...orderBase, side: z.literal('sell'), all: z.literal(true) }),
+]);
 export type PlaceOrderRequest = z.infer<typeof placeOrderRequest>;
 
 /** Sahte ya da gerçek platformun gönderdiği fiyat mesajı (FR-30). */

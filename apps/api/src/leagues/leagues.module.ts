@@ -15,5 +15,6 @@ import { LEAGUE_REPOSITORY } from './ports';
     { provide: CLOCK_MS, useValue: systemClockMs },
     { provide: LEAGUE_REPOSITORY, useClass: DrizzleLeagueRepository },
   ],
+  exports: [LEAGUE_REPOSITORY],
 })
 export class LeaguesModule {}

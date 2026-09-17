@@ -154,13 +154,16 @@ export const positions = pgTable(
       .references(() => memberships.id, { onDelete: 'cascade' }),
     assetId: uuid()
       .notNull()
+      // Pozisyonu ya da emri olan varlık silinemez. Tenant silinirken önce ligler silinmeli
+      // (bkz. ARCHITECTURE.md, "Tenant silme"); PostgreSQL cascade sırası bunu kendiliğinden garanti etmez.
       .references(() => assets.id, { onDelete: 'restrict' }),
     quantity: quantity().notNull(),
     avgCost: quantity().notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.membershipId, t.assetId] }),
-    check('positions_quantity_non_negative', sql`${t.quantity} >= 0`),
+    check('positions_quantity_positive', sql`${t.quantity} > 0`),
+    check('positions_avg_cost_non_negative', sql`${t.avgCost} >= 0`),
   ],
 );
 
@@ -174,12 +177,16 @@ export const virtualOrders = pgTable(
       .references(() => memberships.id, { onDelete: 'cascade' }),
     assetId: uuid()
       .notNull()
+      // Pozisyonu ya da emri olan varlık silinemez. Tenant silinirken önce ligler silinmeli
+      // (bkz. ARCHITECTURE.md, "Tenant silme"); PostgreSQL cascade sırası bunu kendiliğinden garanti etmez.
       .references(() => assets.id, { onDelete: 'restrict' }),
     side: orderSide().notNull(),
     amount: cash().notNull(),
     price: quantity().notNull(),
     quantity: quantity().notNull(),
     idempotencyKey: uuid().notNull(),
+    /** İsteğin özeti. Aynı anahtar farklı bir emirle tekrar kullanılırsa reddedilir (FR-33). */
+    requestHash: text().notNull(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -187,6 +194,7 @@ export const virtualOrders = pgTable(
     index().on(t.membershipId, t.createdAt),
     check('virtual_orders_amount_positive', sql`${t.amount} > 0`),
     check('virtual_orders_price_positive', sql`${t.price} > 0`),
+    check('virtual_orders_quantity_positive', sql`${t.quantity} > 0`),
   ],
 );
 

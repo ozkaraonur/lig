@@ -23,13 +23,13 @@ Durum: `[x]` bitti · `[ ]` yapılacak. Parantezdeki kodlar tasarım dosyasında
 - [x] Fiyat alıcı + Redis'te son fiyat (FR-30)
 - [x] Lig listeleme, katılma, sanal bakiye (FR-02, FR-03)
 - [x] Gerçek PostgreSQL ve Redis ile entegrasyon testleri, CI'da
-- [ ] Emir motoru: kurallar, idempotency, transaction, her hata dalına test (FR-04, FR-33)
-- [ ] Oyuncu başına istek sınırı: emir ve lig uçları (T9)
-- [ ] Portföy ve getiri (FR-05)
+- [x] Emir motoru: kurallar, idempotency, transaction, her hata dalına test (FR-04, FR-33)
+- [x] Oyuncu başına istek sınırı: emir ve lig uçları (T9)
+- [x] Portföy, getiri ve emir geçmişi (FR-05)
 - [ ] Haftalık ve sezon sıralaması (FR-06)
 - [ ] Görevler ve XP, BullMQ worker (FR-07)
 - [ ] Lig kapanışı ve ödül dağıtımı (FR-32)
-- [ ] Oyuncu arayüzü (FR-08 dahil)
+- [ ] Oyuncu arayüzü (FR-08 dahil) — lig listesi, katılma, işlem paneli ve portföy hazır; sıralama ve görev ekranları kaldı
 
 ## Faz 2 · Yönetim paneli
 

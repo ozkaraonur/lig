@@ -47,3 +47,15 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 - **Bağlam:** Servis ve uç testleri hızlı olsun diye bellek içi sahtelerle çalışıyor. Ama sahte, SQL'deki bir hatayı göremez.
 - **Karar:** Veritabanı ve Redis koduna ayrıca `*.int.test.ts` entegrasyon testleri yazılır (`npm run test:int`). CI'da gerçek PostgreSQL 17 ve Redis 7.4 ile çalışır. Tenant ayrımı, eşzamanlı istek ve kilit davranışı mutlaka burada sınanır.
 - **Sonuç:** İlk entegrasyon testi, sahte testlerin geçtiği bir hatayı yakaladı: Drizzle ham SQL içindeki kolonu tablo adı olmadan yazıyordu ve "üye sayısı" her ligde 0 dönüyordu. Ham SQL'de tablo adları artık açıkça yazılır.
+
+## K-009 · Para hesapları BigInt ile, veritabanında değil kodda
+
+- **Bağlam:** Tutar (2 ondalık), miktar ve fiyat (10 ondalık) JavaScript `number` ile tam hesaplanamaz. Seçenekler: hesabı SQL'de `numeric` ile yapmak, bir ondalık kütüphanesi eklemek ya da BigInt.
+- **Karar:** Değerler veritabanı ölçeğinde tam sayıya çevrilip BigInt ile hesaplanır (`orders/fixed-point.ts`, `orders/order-math.ts`). Her bölmede yuvarlama yönü açıkça seçilir ve her zaman kasanın lehinedir: alışta miktar aşağı, tutarla satışta verilen miktar yukarı, değerlemede tutar aşağı.
+- **Sonuç:** Yeni bağımlılık yok. Kurallar SQL'e dağılmadan tek yerde ve bellek içi testlerle sınanıyor. Veritabanındaki CHECK kısıtları ikinci savunma hattı.
+
+## K-010 · Emir işleme: kilit sırası ve idempotency
+
+- **Karar:** Her emir tek transaction: lig `FOR SHARE`, üyelik `FOR UPDATE`, sonra idempotency kontrolü, kurallar ve yazma. İdempotency anahtarı üyelik başına tekildir; kayıtta isteğin SHA-256 özeti tutulur. Aynı anahtar aynı istekle gelirse önceki sonuç 200 ile döner, farklı istekle gelirse 409.
+- **Neden:** İdempotency kontrolü kilitten sonra yapıldığı için aynı anahtarlı paralel istekler de tek emir üretir. Lig kilidi, ileride lig kapanışının (FR-32) işlem sürerken sıralamayı dondurabilmesini sağlar. Reddedilen emir (ör. yetersiz bakiye) anahtarı harcamaz.
+- **Sonuç:** Aynı oyuncunun aynı ligdeki emirleri sıraya girer (bir oyuncu için saniyede birkaç emir, sorun değil); farklı oyuncular birbirini beklemez.

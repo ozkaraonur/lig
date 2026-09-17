@@ -97,4 +97,13 @@ describe('mock platform', () => {
     const { ticks } = priceFeedResponse.parse(res.json());
     expect(ticks.map((t) => priceTick.parse(t).symbol)).toContain('BTC');
   });
+
+  it('freezes prices while paused and resumes', async () => {
+    const snapshot = async () => (await app.inject({ method: 'GET', url: '/prices' })).json();
+    await app.inject({ method: 'POST', url: '/debug/prices/pause' });
+    expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toEqual({ paused: true });
+    await app.inject({ method: 'POST', url: '/debug/prices/resume' });
+    expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toEqual({ paused: false });
+    expect(await snapshot()).toHaveProperty('ticks');
+  });
 });

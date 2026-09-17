@@ -18,6 +18,8 @@ export const LOGIN_PAGE_HTML = `<!doctype html>
     button { font: inherit; font-weight: 700; padding: 14px; border-radius: 12px; border: 0; background: #c6f24e; color: #0d0f14; cursor: pointer; }
     .error { color: #ff5c7a; min-height: 1.5em; }
     code { color: #c6f24e; }
+    .tools { border-top: 1px solid #2a3140; padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .tools button { background: transparent; color: #eef1f6; border: 1px solid #2a3140; }
   </style>
 </head>
 <body>
@@ -31,6 +33,12 @@ export const LOGIN_PAGE_HTML = `<!doctype html>
     </form>
     <p class="error" id="error" role="alert"></p>
     <p>Token 5 dakika geçerli ve tek kullanımlık. Aynı token ikinci kez kullanılırsa <code>401</code> döner.</p>
+    <section class="tools">
+      <h2>Test araçları</h2>
+      <p>Fiyat akışı: <strong id="feed-status">...</strong></p>
+      <button type="button" id="feed-toggle">Fiyat akışını durdur</button>
+      <p>Durdurunca 5 saniye sonra ligde fiyatlar "güncel değil" olur ve emir verilemez.</p>
+    </section>
   </main>
   <script src="/login.js"></script>
 </body>
@@ -63,5 +71,22 @@ form.addEventListener('submit', async (event) => {
   } catch {
     errorBox.textContent = 'Sahte platforma ulaşılamadı.';
   }
+});
+
+const feedStatus = document.getElementById('feed-status');
+const feedToggle = document.getElementById('feed-toggle');
+let paused = false;
+
+function renderFeed() {
+  feedStatus.textContent = paused ? 'durduruldu' : 'akıyor';
+  feedToggle.textContent = paused ? 'Fiyat akışını başlat' : 'Fiyat akışını durdur';
+}
+
+fetch('/debug/prices').then((r) => r.json()).then((d) => { paused = d.paused; renderFeed(); });
+
+feedToggle.addEventListener('click', async () => {
+  const res = await fetch('/debug/prices/' + (paused ? 'resume' : 'pause'), { method: 'POST' });
+  paused = (await res.json()).paused;
+  renderFeed();
 });
 `;

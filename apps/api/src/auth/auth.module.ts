@@ -13,6 +13,7 @@ import {
   TENANT_DIRECTORY,
 } from './ports';
 import { RedisRateLimiter, RedisReplayStore, RedisSessionStore } from './redis-adapters';
+import { PlayerRateLimitGuard } from './player-rate-limit.guard';
 import { SessionGuard } from './session.guard';
 
 @Module({
@@ -21,6 +22,7 @@ import { SessionGuard } from './session.guard';
     AuthService,
     PlayerTokenVerifier,
     SessionGuard,
+    PlayerRateLimitGuard,
     { provide: CLOCK, useValue: systemClock },
     { provide: TENANT_DIRECTORY, useClass: DrizzleTenantDirectory },
     { provide: PLAYER_REPOSITORY, useClass: DrizzlePlayerRepository },
@@ -28,6 +30,6 @@ import { SessionGuard } from './session.guard';
     { provide: SESSION_STORE, useClass: RedisSessionStore },
     { provide: RATE_LIMITER, useClass: RedisRateLimiter },
   ],
-  exports: [SessionGuard, SESSION_STORE, CLOCK],
+  exports: [SessionGuard, PlayerRateLimitGuard, SESSION_STORE, CLOCK, RATE_LIMITER],
 })
 export class AuthModule {}
