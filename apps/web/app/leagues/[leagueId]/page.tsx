@@ -14,6 +14,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError } from '../../../lib/api';
 import { formatDateRange, LEAGUE_PHASE_LABELS, LEAGUE_TYPE_LABELS } from '../../../lib/labels';
+import { LeaderboardSection } from './leaderboard-section';
 import { PortfolioSection } from './portfolio-section';
 import { TradePanel } from './trade-panel';
 
@@ -171,6 +172,15 @@ export default function LeaguePage() {
       )}
 
       {league.joined && league.phase === 'upcoming' && <p>Lig başlayınca işlem yapabilirsin.</p>}
+
+      {league.phase !== 'upcoming' && (
+        <LeaderboardSection
+          leagueId={leagueId}
+          finished={league.closed}
+          // Lig ekran açıkken kapanırsa sayfa yenilenir: işlem paneli kalkar, final sonucu görünür.
+          onFinal={() => void load()}
+        />
+      )}
 
       <h2>Fiyatlar</h2>
       <table className="prices">

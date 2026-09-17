@@ -59,3 +59,16 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 - **Karar:** Her emir tek transaction: lig `FOR SHARE`, üyelik `FOR UPDATE`, sonra idempotency kontrolü, kurallar ve yazma. İdempotency anahtarı üyelik başına tekildir; kayıtta isteğin SHA-256 özeti tutulur. Aynı anahtar aynı istekle gelirse önceki sonuç 200 ile döner, farklı istekle gelirse 409.
 - **Neden:** İdempotency kontrolü kilitten sonra yapıldığı için aynı anahtarlı paralel istekler de tek emir üretir. Lig kilidi, ileride lig kapanışının (FR-32) işlem sürerken sıralamayı dondurabilmesini sağlar. Reddedilen emir (ör. yetersiz bakiye) anahtarı harcamaz.
 - **Sonuç:** Aynı oyuncunun aynı ligdeki emirleri sıraya girer (bir oyuncu için saniyede birkaç emir, sorun değil); farklı oyuncular birbirini beklemez.
+
+## K-011 · Sıralama ve lig sonu ödülleri
+
+- **Sıralama:** Toplam değer (nakit + pozisyonların son fiyatla değeri) büyükten küçüğe. Eşit değerde sıra paylaşılır (1, 2, 2, 4). Portföy ekranı, sıralama ve kapanış aynı değerleme fonksiyonunu kullanır (`orders/valuation.ts`).
+- **Hesaplama:** Süren ligler 2 sn'de bir yeniden hesaplanır ve Redis sorted set'e yazılır (skor = kuruş). Yeni liste geçici anahtara yazılıp tek adımda yerine konur. Biten ligin sıralaması artık hesaplanmaz.
+- **Kapanış:** Lig özel kilitliyken final sıra, final değer ve kapanış fiyatları PostgreSQL'e yazılır, XP dağıtılır, lig `finished` olur. Kapanmış ligin sıralaması ve portföy ekranı bu kayıttan okunur ve bir daha değişmez.
+- **Ödüller (yalnızca XP, NFR-06):** 1. sıra 1000, 2. sıra 600, 3. sıra 400, ilk %10 150, diğer katılımcılar 50. Ödül için ligde en az bir emir vermiş olmak gerekir; hiç işlem yapmadan, düşen piyasada başlangıç bakiyesiyle birinci olup ödül alınamaz.
+- **Tekrar güvenliği:** Her XP `xp_ledger` tablosuna (oyuncu, sebep, kaynak) tekilliğiyle yazılır; kapanış iki kez çalışsa bile ödül bir kez verilir.
+
+## K-012 · Bağımlılık güvenlik uyarıları
+
+- **fastify:** NestJS 11 fastify'ı 5.11.3'e sabitliyor; bu sürümde iki orta seviye açık var (GHSA-w2qp-rph6-63g4, GHSA-3m5p-2c4r-xxw2). İkisi de bizim kullanım şeklimizde tetiklenmiyor (doğrulama zod ile, `trustProxy` kapalı), yine de npm `overrides` ile 5.12.5'e çıkarıldı. `npm audit --omit=dev` temiz.
+- **Kalan 6 uyarı yalnızca geliştirme araçlarında:** vitest (GHSA-82fw-gwwq-j7x9, "redirect mock" kullanılmıyor) ve drizzle-kit içindeki eski esbuild (GHSA-67mh-4wv8-2f99, esbuild geliştirme sunucusu kullanılmıyor). Düzeltmeleri ana sürüm yükseltmesi istiyor (vitest 4+, drizzle-kit yeni seri); ayrı iş olarak planlanır. Üretim paketine girmezler.

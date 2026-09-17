@@ -26,10 +26,11 @@ Durum: `[x]` bitti · `[ ]` yapılacak. Parantezdeki kodlar tasarım dosyasında
 - [x] Emir motoru: kurallar, idempotency, transaction, her hata dalına test (FR-04, FR-33)
 - [x] Oyuncu başına istek sınırı: emir ve lig uçları (T9)
 - [x] Portföy, getiri ve emir geçmişi (FR-05)
-- [ ] Haftalık ve sezon sıralaması (FR-06)
+- [x] Haftalık ve sezon sıralaması (FR-06)
 - [ ] Görevler ve XP, BullMQ worker (FR-07)
-- [ ] Lig kapanışı ve ödül dağıtımı (FR-32)
-- [ ] Oyuncu arayüzü (FR-08 dahil) — lig listesi, katılma, işlem paneli ve portföy hazır; sıralama ve görev ekranları kaldı
+- [x] Lig kapanışı ve XP ödülleri (FR-32)
+- [x] Altyapı ön kontrolü (`db:migrate`, `test:int`), fastify güvenlik güncellemesi
+- [ ] Oyuncu arayüzü (FR-08 dahil) — lig listesi, katılma, işlem paneli, portföy ve sıralama hazır; görevler ve "Gerçek hesabıma geç" kaldı
 
 ## Faz 2 · Yönetim paneli
 

@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
 import { OrdersModule } from './orders/orders.module';
 import { PricesModule } from './prices/prices.module';
+import { RankingModule } from './ranking/ranking.module';
 import { RedisModule } from './redis/redis.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { RedisModule } from './redis/redis.module';
     PricesModule,
     LeaguesModule,
     OrdersModule,
+    RankingModule,
   ],
 })
 export class AppModule {}

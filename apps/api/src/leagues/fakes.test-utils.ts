@@ -12,6 +12,7 @@ export interface StoredLeague {
   endsAt: Date;
   startingCash: string;
   assetIds: string[];
+  closingPrices?: Record<string, string | null> | null;
 }
 
 /**
@@ -100,6 +101,7 @@ export class InMemoryLeagueRepository implements LeagueRepository {
     const members = this.memberships.filter((m) => m.leagueId === l.id);
     return {
       ...l,
+      closingPrices: l.closingPrices ?? null,
       memberCount: members.length,
       joined: members.some((m) => m.playerId === playerId),
     };

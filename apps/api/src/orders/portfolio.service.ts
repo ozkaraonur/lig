@@ -4,9 +4,10 @@ import { type SessionData } from '../auth/ports';
 import { LEAGUE_REPOSITORY, type LeagueRepository } from '../leagues/ports';
 import { PriceService } from '../prices/price.service';
 import { CASH_SCALE, formatFixed, parseFixed, PRICE_SCALE, QUANTITY_SCALE } from './fixed-point';
-import { quantityValue, returnPercentUnits } from './order-math';
+import { returnPercentUnits } from './order-math';
 import { orderErrors, toOrderView } from './orders.service';
 import { PORTFOLIO_READER, type PortfolioReader } from './ports';
+import { valuePosition } from './valuation';
 
 /** Portföy ve getiri (FR-05). Değerleme her istekte son fiyatla yapılır; hiçbir değer istemciden gelmez. */
 @Injectable()
@@ -20,32 +21,30 @@ export class PortfolioService {
   async portfolio(session: SessionData, leagueId: string): Promise<PortfolioView> {
     const { league, membership } = await this.requireMembership(session, leagueId);
     const held = await this.reader.listPositions(membership.id);
-    const quotes = await this.prices.latestFor(
-      session.tenantId,
-      held.map((p) => ({ id: p.assetId, symbol: p.symbol })),
-    );
+    // Kapanmış ligde kapanış fiyatları kullanılır: toplam değer final sıralamasıyla aynı kalır (FR-32).
+    const quotes = league.closingPrices
+      ? held.map((p) => ({ price: league.closingPrices?.[p.assetId] ?? null, stale: false }))
+      : await this.prices.latestFor(
+          session.tenantId,
+          held.map((p) => ({ id: p.assetId, symbol: p.symbol })),
+        );
 
     let positionsValue = 0n;
     const positions: PortfolioPosition[] = held.map((p, i) => {
       const quote = quotes[i];
-      const quantity = parseFixed(p.quantity, QUANTITY_SCALE);
-      const avgCost = parseFixed(p.avgCost, PRICE_SCALE);
-      // Fiyat hiç gelmediyse pozisyon maliyetinden değerlenir: sıralama boş fiyat yüzünden sıfırlanmaz.
-      const valuationPrice = quote?.price ? parseFixed(quote.price, PRICE_SCALE) : avgCost;
-      const value = quantityValue(quantity, valuationPrice);
-      const cost = quantityValue(quantity, avgCost);
-      positionsValue += value;
+      const v = valuePosition({ quantity: p.quantity, avgCost: p.avgCost, price: quote?.price ?? null });
+      positionsValue += v.valueUnits;
       return {
         assetId: p.assetId,
         symbol: p.symbol,
         name: p.name,
-        quantity: formatFixed(quantity, QUANTITY_SCALE),
-        avgCost: formatFixed(avgCost, PRICE_SCALE),
-        price: quote?.price ? formatFixed(valuationPrice, PRICE_SCALE) : null,
+        quantity: formatFixed(v.quantityUnits, QUANTITY_SCALE),
+        avgCost: formatFixed(v.avgCostUnits, PRICE_SCALE),
+        price: quote?.price ? formatFixed(v.priceUnits, PRICE_SCALE) : null,
         stale: quote?.stale ?? true,
-        value: formatFixed(value, CASH_SCALE),
-        pnl: formatFixed(value - cost, CASH_SCALE),
-        pnlPercent: formatFixed(returnPercentUnits(value, cost), 2),
+        value: formatFixed(v.valueUnits, CASH_SCALE),
+        pnl: formatFixed(v.valueUnits - v.costUnits, CASH_SCALE),
+        pnlPercent: formatFixed(returnPercentUnits(v.valueUnits, v.costUnits), 2),
       };
     });
 

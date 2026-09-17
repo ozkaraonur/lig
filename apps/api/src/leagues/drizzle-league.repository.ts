@@ -112,6 +112,7 @@ export class DrizzleLeagueRepository implements LeagueRepository {
         endsAt: leagues.endsAt,
         startingCash: leagues.startingCash,
         assetIds: leagues.assetIds,
+        closingPrices: leagues.closingPrices,
         // Düz SQL: Drizzle, sql içindeki leagues.id referansını tablo adı olmadan yazar, alt sorguda "id"
         // memberships tablosuna bağlanırdı (entegrasyon testi bunu yakaladı).
         memberCount: sql<number>`(select count(*) from memberships m where m.league_id = leagues.id)::int`,

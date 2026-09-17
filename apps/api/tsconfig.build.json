@@ -5,5 +5,12 @@
     "declaration": false
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test-utils.ts", "src/db/seed.ts"]
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test-utils.ts",
+    "src/db/seed.ts",
+    "src/db/seed-quick-league.ts",
+    "src/db/preflight.ts",
+    "src/test/**"
+  ]
 }

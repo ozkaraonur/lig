@@ -43,6 +43,8 @@ export interface LeagueSummary {
   startingCash: string;
   memberCount: number;
   joined: boolean;
+  /** Lig kapanışı yapıldı: sıralama dondu, ödüller dağıtıldı (FR-32). */
+  closed: boolean;
 }
 
 export interface LeagueAssetPrice {

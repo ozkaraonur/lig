@@ -13,6 +13,7 @@ import {
   LEAGUE_TYPES,
   ORDER_SIDES,
   PLATFORM_EVENT_TYPES,
+  XP_REASONS,
 } from '@lig/shared';
 import { sql } from 'drizzle-orm';
 import {
@@ -37,6 +38,7 @@ export const orderSide = pgEnum('order_side', ORDER_SIDES);
 export const assetClass = pgEnum('asset_class', ASSET_CLASSES);
 export const adminRole = pgEnum('admin_role', ADMIN_ROLES);
 export const platformEventType = pgEnum('platform_event_type', PLATFORM_EVENT_TYPES);
+export const xpReason = pgEnum('xp_reason', XP_REASONS);
 
 const createdAt = () => timestamp({ withTimezone: true }).notNull().defaultNow();
 const cash = () => numeric({ precision: 20, scale: 2 });
@@ -104,6 +106,13 @@ export const leagues = pgTable(
     endsAt: timestamp({ withTimezone: true }).notNull(),
     startingCash: cash().notNull(),
     assetIds: uuid().array().notNull(),
+    /** Lig kapanışının (FR-32) yapıldığı an. Sıralama bu andan sonra değişmez. */
+    closedAt: timestamp({ withTimezone: true }),
+    /**
+     * Kapanışta değerlemede kullanılan fiyatlar: { varlıkId: fiyat | null }. Kapanmış ligin portföy ekranı
+     * bu fiyatlarla gösterilir; final sıralamasıyla birebir aynı değer çıkar ve fiyatlar oynasa da değişmez.
+     */
+    closingPrices: jsonb().$type<Record<string, string | null>>(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -140,7 +149,9 @@ export const memberships = pgTable(
       .notNull()
       .references(() => players.id, { onDelete: 'cascade' }),
     cash: cash().notNull(),
+    /** Lig kapanışında dondurulan sıra ve toplam değer (FR-32). Kapanıştan önce null. */
     finalRank: integer(),
+    finalValue: cash(),
     joinedAt: createdAt(),
   },
   (t) => [unique().on(t.leagueId, t.playerId), check('memberships_cash_non_negative', sql`${t.cash} >= 0`)],
@@ -239,4 +250,28 @@ export const platformEvents = pgTable(
     receivedAt: createdAt(),
   },
   (t) => [unique().on(t.tenantId, t.externalEventId), index().on(t.tenantId, t.type, t.occurredAt)],
+);
+
+/**
+ * Oyuncuya verilen her XP'nin değiştirilemez kaydı (NFR-07). (oyuncu, sebep, kaynak) tekildir:
+ * lig kapanışı iki kez çalışsa ya da görev olayı tekrar gelse bile XP bir kez verilir.
+ */
+export const xpLedger = pgTable(
+  'xp_ledger',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    reason: xpReason().notNull(),
+    /** Ödülün kaynağı: lig kimliği ya da görev kimliği + dönem. */
+    sourceId: text().notNull(),
+    amount: integer().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique().on(t.playerId, t.reason, t.sourceId),
+    index().on(t.playerId, t.createdAt),
+    check('xp_ledger_amount_positive', sql`${t.amount} > 0`),
+  ],
 );

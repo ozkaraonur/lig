@@ -78,6 +78,17 @@ Hesaplar BigInt ile (K-009). Pozisyon miktarı sıfıra inerse satır silinir.
 - `GET /leagues/:id/portfolio`: nakit, pozisyonlar (son fiyatla değer, kâr/zarar, yüzde), toplam değer, başlangıca göre getiri. Fiyat bayatsa son bilinen fiyat, hiç yoksa maliyet kullanılır.
 - `GET /leagues/:id/orders?limit=50`: son emirler, en yeni önce (en fazla 100).
 
+## Sıralama (FR-06) ve lig kapanışı (FR-32)
+
+`LeagueSchedulerWorker` 2 sn'de bir (`RANKING_INTERVAL_MS`):
+
+1. Süresi dolmuş ama kapanmamış ligleri kapatır (`LeagueCloseService`): lig `FOR UPDATE`, pozisyonlar son fiyatlarla değerlenir, `memberships.final_rank / final_value` ve `leagues.closing_prices` yazılır, XP `xp_ledger`'a işlenip `players.xp`'ye eklenir, lig `finished` olur, Redis sıralaması silinir.
+2. Süren liglerin sıralamasını yeniden hesaplayıp Redis'e yazar: `league:{id}:ranking` (sorted set, skor = kuruş).
+
+`GET /leagues/:id/leaderboard?limit=5`: süren ligde Redis'ten, kapanmış ligde PostgreSQL'den. İlk N oyuncu ve oyuncunun kendi satırı; kapanmış ligde kazandığı XP. Ödül kuralları: K-011.
+
+Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sıralamasıyla aynı değeri gösterir.
+
 ## İstek sınırları (T9)
 
 Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumaları dakikada 120, katılma 10, emir 30. Giriş denemesi IP başına dakikada 20.
@@ -89,7 +100,8 @@ Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumalar�
 - Para ve miktar `numeric`; JavaScript `number`'a çevrilmez, string olarak taşınır.
 - Kök tablolar `tenant_id` taşır. Her sorgu tenant ile sınırlanır (NFR-03).
 - Tenant silme sırası: önce o tenant'ın ligleri (üyelik, pozisyon, emir cascade ile gider), sonra tenant. Pozisyonu olan varlık `restrict` ile korunduğu için doğrudan tenant silmek hata verir.
-- Anlık fiyat Redis'te: `price:{tenantId}:{symbol}`. Sıralama da Redis'te olacak: `league:{id}:ranking` (sorted set).
+- Anlık fiyat Redis'te: `price:{tenantId}:{symbol}`. Süren ligin sıralaması Redis'te: `league:{id}:ranking` (sorted set).
+- XP'nin her hareketi `xp_ledger`'da; (oyuncu, sebep, kaynak) tekil (NFR-07).
 
 ## Kod kuralları
 

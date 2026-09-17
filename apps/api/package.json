@@ -9,11 +9,12 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:int": "vitest run --config vitest.int.config.ts",
+    "test:int": "tsx src/db/preflight.ts --redis && vitest run --config vitest.int.config.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx src/db/preflight.ts && drizzle-kit migrate",
     "db:check": "drizzle-kit check",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "db:seed:quick": "tsx src/db/seed-quick-league.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",
@@ -23,7 +24,7 @@
     "@nestjs/core": "11.2.5",
     "@nestjs/platform-fastify": "11.2.5",
     "drizzle-orm": "0.45.2",
-    "fastify": "5.11.3",
+    "fastify": "5.12.5",
     "ioredis": "5.11.1",
     "jose": "6.2.12",
     "pg": "8.23.0",

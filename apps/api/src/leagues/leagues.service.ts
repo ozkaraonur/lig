@@ -114,6 +114,7 @@ function toSummary(row: LeagueRecord, now: Date): LeagueSummary {
     startingCash: row.startingCash,
     memberCount: row.memberCount,
     joined: row.joined,
+    closed: row.status === 'finished',
   };
 }
 

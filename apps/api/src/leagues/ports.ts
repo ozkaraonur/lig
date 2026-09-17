@@ -10,6 +10,8 @@ export interface LeagueRecord {
   endsAt: Date;
   startingCash: string;
   assetIds: string[];
+  /** Kapanmış ligde değerleme fiyatları (FR-32); süren ligde null. */
+  closingPrices: Record<string, string | null> | null;
   memberCount: number;
   /** Soran oyuncu bu ligin üyesi mi. */
   joined: boolean;

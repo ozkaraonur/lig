@@ -119,3 +119,23 @@
 
 - Dakikada 30 emir sınırı oyuncu başına. Bir platformun bütün oyuncularının toplam yükü için tenant bazlı sınır Faz 4'te.
 - Doğrulama hatası mesajı birleşik şemalarda (al / tutarla sat / tümünü sat) alan adı yerine "body" diyebiliyor. Güvenlik sorunu değil, mesaj iyileştirmesi.
+
+## Sıralama ve lig kapanışı: uygulama ayrıntısı (Faz 1)
+
+**Kod:** `apps/api/src/ranking/`. **Testler:** `standings.test.ts`, `ranking.e2e.test.ts`, `ranking.int.test.ts` (gerçek PostgreSQL ve Redis).
+
+| Saldırı ya da hata                                          | Sonuç                                                                | Test |
+| ----------------------------------------------------------- | -------------------------------------------------------------------- | ---- |
+| Bitişten sonra emir verip final sırayı değiştirmeye çalışma | 409 `LEAGUE_NOT_ACTIVE`, kapanıştan önce de sonra da                 | ✓    |
+| Lig kapandıktan sonra fiyat yükselince sırayı değiştirme    | Final sıra, final değer ve portföy ekranı kapanış fiyatlarıyla donar | ✓    |
+| Kapanış işini iki kez ya da aynı anda beş kez çalıştırma    | Tek kapanış, XP bir kez                                              | ✓    |
+| Kapanış yarıda kalıp tekrar çalışınca XP'yi ikiye katlama   | XP defteri tekil, ikinci çalışmada 0 XP                              | ✓    |
+| Hiç işlem yapmadan birinci olup ödül alma                   | Ödül yok                                                             | ✓    |
+| Başka platformun sıralamasını görme                         | 404                                                                  | ✓    |
+| Sıralama yanıtından oyuncuların iç kimliklerini toplama     | Yanıtta iç kimlik yok, sadece görünen ad                             | ✓    |
+
+**Kararı Onur'la verilecek hile türleri:**
+
+- **Çoklu hesap:** Aynı kişi platformda birden fazla hesapla katılıp birini "risk hesabı" olarak kullanabilir. Kimlik platformda olduğu için tespit de platform tarafında. Öneri: sözleşmede platformun oyuncu başına tek `sub` garanti etmesi; bizde tenant başına aynı cihaz/IP'den çok sayıda katılım için ileride uyarı metriği.
+- **Son dakikada her şeyi tek varlığa basma:** Oyunun parçası sayılabilir. Sınırlamak istenirse lig ayarı olarak "varlık başına en fazla %X" kuralı eklenebilir (Faz 2, FR-20).
+- **Sıralama 2 sn gecikmeli:** Oyuncu kendi portföyünü anlık, sıralamayı en fazla birkaç saniye geriden görür. Güvenlik sorunu değil; final sıra kapanış anında yeniden hesaplanır.

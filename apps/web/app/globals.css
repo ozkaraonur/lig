@@ -258,3 +258,47 @@ button.link:disabled {
   padding: 10px 0;
   border-bottom: 1px solid #232937;
 }
+
+.leaderboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-row {
+  padding: 10px 8px;
+  border-bottom: 1px solid #232937;
+  gap: 10px;
+}
+
+.rank-row.me {
+  background: var(--surface);
+  border-radius: 10px;
+  border-bottom-color: transparent;
+}
+
+.rank-row .rank {
+  width: 1.8em;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-row .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-row .pct {
+  width: 5.5em;
+}
+
+.leaderboard .gap {
+  text-align: center;
+  color: var(--muted);
+  padding: 2px 0;
+}
