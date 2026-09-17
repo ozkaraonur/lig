@@ -20,6 +20,14 @@ async function main(): Promise<void> {
     console.warn(
       `Yeniden şifrelendi: ${result.tenantWebhookSecrets} webhook anahtarı, ${result.adminMfaSecrets} MFA secret'ı.`,
     );
+    if (result.unreadable.length > 0) {
+      console.error(
+        `Çözülemeyen ${result.unreadable.length} kayıt var: ${result.unreadable.join(', ')}\n` +
+          'SECRET_KEYS içinde bu kayıtları yazan eski anahtar yok. O anahtarı geri ekleyip tekrar çalıştır; ' +
+          'eski anahtarı bu uyarı kaybolmadan silme.',
+      );
+      process.exitCode = 1;
+    }
   } finally {
     await pool.end();
   }

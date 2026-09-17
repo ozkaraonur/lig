@@ -62,9 +62,9 @@ describe('encrypted secrets in PostgreSQL (K-015)', () => {
   });
 
   it('re-encrypts every old-key value with the active key, once', async () => {
-    const first = await rotateStoredSecrets(ctx.db, newCipher);
-    expect(first.tenantWebhookSecrets).toBeGreaterThanOrEqual(1);
-    expect(first.adminMfaSecrets).toBeGreaterThanOrEqual(1);
+    // Yalnızca bu testin tenant'ı: geliştirme veritabanında başka anahtarla yazılmış gerçek kayıtlar da olabilir.
+    const first = await rotateStoredSecrets(ctx.db, newCipher, { tenantId });
+    expect(first).toEqual({ tenantWebhookSecrets: 1, adminMfaSecrets: 1, unreadable: [] });
 
     const [tenant] = await ctx.db.select().from(tenants).where(eq(tenants.id, tenantId));
     const [admin] = await ctx.db.select().from(adminUsers).where(eq(adminUsers.id, adminId));
@@ -80,9 +80,34 @@ describe('encrypted secrets in PostgreSQL (K-015)', () => {
       'JBSWY3DPEHPK3PXP',
     );
 
-    const again = await rotateStoredSecrets(ctx.db, newCipher);
+    const again = await rotateStoredSecrets(ctx.db, newCipher, { tenantId });
     const [tenantAfter] = await ctx.db.select().from(tenants).where(eq(tenants.id, tenantId));
     expect(tenantAfter?.webhookSecretCiphertext).toBe(tenant?.webhookSecretCiphertext);
-    expect(again.tenantWebhookSecrets).toBe(0);
+    expect(again).toEqual({ tenantWebhookSecrets: 0, adminMfaSecrets: 0, unreadable: [] });
+  });
+
+  it('reports records written with a key it does not have and still rotates the rest', async () => {
+    const lostKey = new LocalSecretCipher(parseKeyring(`k0:${randomBytes(32).toString('base64')}`));
+    const otherTenant = await createTenant(ctx.db, 'secrets-lost-key');
+    try {
+      const unreadable = await lostKey.encrypt(
+        'platform-hmac',
+        secretContext.tenantWebhookSecret(otherTenant),
+      );
+      await ctx.db
+        .update(tenants)
+        .set({ webhookSecretCiphertext: unreadable })
+        .where(eq(tenants.id, otherTenant));
+
+      const scopedElsewhere = await rotateStoredSecrets(ctx.db, newCipher, { tenantId });
+      expect(scopedElsewhere.unreadable).toEqual([]);
+
+      const result = await rotateStoredSecrets(ctx.db, newCipher, { tenantId: otherTenant });
+      expect(result.unreadable).toEqual([`tenants:${otherTenant}`]);
+      const [row] = await ctx.db.select().from(tenants).where(eq(tenants.id, otherTenant));
+      expect(row?.webhookSecretCiphertext).toBe(unreadable);
+    } finally {
+      await deleteTenants(ctx.db, [otherTenant]);
+    }
   });
 });
