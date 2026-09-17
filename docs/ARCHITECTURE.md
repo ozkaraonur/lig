@@ -136,6 +136,17 @@ Web: `/admin` (panel), `/admin/team`, `/admin/audit`, `/admin/account`, `/admin/
 
 Web: `/admin/leagues`, `/admin/leagues/new`, `/admin/leagues/[id]`, `/admin/compliance`. Oyuncu ekranlarında kilitli sanal para uyarısı.
 
+## Görev şablonları (FR-21, K-023) ve marka ayarları (FR-22, K-024)
+
+- `GET /admin/quests`: her rol. `POST /admin/quests`, `PATCH /admin/quests/:id`, `DELETE /admin/quests/:id`: sahip ve düzenleyici.
+- Yönetici şablon, dönem, hedef ve XP seçer; başlık şablondan üretilir (`questTitle`). Şablon ve dönem sonradan değişmez.
+- `(tenant_id, template, period)` tekil; ikinci görev 409. XP dağıtmış görev (`xp_ledger`'da kaydı olan) silinmez, yalnızca pasife alınır.
+- `GET /admin/branding`: her rol. `PATCH /admin/branding`: sahip ve düzenleyici. Ad `tenants.name`, renk ve logo `tenants.theme` jsonb alanında.
+- Oyuncu ekranı rengi `/auth/me` ile gelir. `BrandingStyle` üç CSS değişkeni yazar: `--accent` (marka rengi), `--accent-text` (rengin üstündeki yazı), `--accent-readable` (koyu zeminde marka rengiyle yazılan yazı; kontrast 4.5:1 olana kadar açılır). İkisi de `@lig/shared` içindeki saf fonksiyonlarla hesaplanır.
+- Logo yalnızca `https://`; sunucu doğrular, oyuncuya başka bir şey gitmez.
+
+Web: `/admin/quests` (tabloda hedef ve XP satır içi düzenlenir), `/admin/branding` (renk seçici ve önizleme).
+
 ## Gizli değerler (K-015)
 
 Webhook anahtarı (`tenants.webhook_secret_ciphertext`) ve MFA secret'ı (`admin_users.mfa_secret_ciphertext`) `SecretCipher` ile şifreli. Bugünkü uygulama AES-256-GCM, anahtar `SECRET_KEYS` ortam değişkeninden (üretimde zorunlu, geliştirmede boşsa herkesin bildiği geliştirme anahtarı). Her değer kendi satırına bağlıdır (`secretContext`). Yeni anahtar: `npm run secrets:new-key`; değişim: yeni anahtarı başa ekle, `npm run secrets:rotate`. Faz 3.5'te aynı arayüzün OpenBao uygulaması gelir.

@@ -258,3 +258,29 @@
 
 - Katılım koşulu olarak "kimliği doğrulanmış hesap" yok; platform token'ına bu bilgi eklenince gelecek (K-018, K-021).
 - Uyum ayarlarında sahibin kararı tek kişilik. Pilotta "iki onay" (dört göz) istenebilir.
+
+## Görev şablonları ve marka ayarları: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `apps/api/src/admin-settings/`, `apps/web/app/admin/quests/`, `apps/web/app/admin/branding/`, `apps/web/app/branding.tsx`. **Testler:** `admin-settings.int.test.ts` (HTTP üzerinden, gerçek PostgreSQL ve Redis), `packages/shared/src/branding.test.ts`, `quests.test.ts`. Ayrıca tarayıcıda görev ekleme, oyuncu ekranında görme, pasife alma, hedefi tablodan düzenleme, silme ve marka rengini değiştirip oyuncu ekranının değişmesi denendi.
+
+| Saldırı ya da hata                                    | Sonuç                                         | Test |
+| ----------------------------------------------------- | --------------------------------------------- | ---- |
+| İzleyicinin görev ya da marka değiştirmesi            | 403                                           | ✓    |
+| Başka platformun görevini görme, düzenleme, silme     | 404 ("yok" ile aynı)                          | ✓    |
+| Göreve nakit ödül alanı ya da serbest başlık gönderme | 400, katı şema (FR-24)                        | ✓    |
+| Bilinmeyen şablon, dönem ya da sıfır hedef/XP         | 400; veritabanında da CHECK var               | ✓    |
+| Aynı şablon ve dönemden ikinci görev                  | 409                                           | ✓    |
+| Aynı görevi 10 eşzamanlı istekle açma                 | Tam 1 görev, 1 denetim kaydı                  | ✓    |
+| Şablonu ya da dönemi sonradan değiştirme              | 400, alan şemada yok                          | ✓    |
+| XP dağıtmış görevi silme                              | 409, yalnızca pasife alınır; verilen XP kalır | ✓    |
+| Pasif görevden XP kazanma                             | Görev listelenmez ve değerlendirilmez         | ✓    |
+| Logo adresine `javascript:`, `data:` ya da `http://`  | 400; kayıt elle bozulsa bile oyuncuya gitmez  | ✓    |
+| Platform adına HTML ya da kontrol karakteri           | 400                                           | ✓    |
+| Okunmaz renk seçimi (koyu zeminde koyu yazı)          | Yazı renkleri renkten hesaplanır, ayarlanamaz | ✓    |
+| Görev ve marka değişikliğinin inkârı                  | Eski ve yeni değerle denetim kaydında         | ✓    |
+
+**Bilinen açık konular:**
+
+- Logo adresi platformun sunucusundan çekiliyor: oyuncunun IP'si o sunucuya gider ve adresin arkasındaki görsel sonradan değişebilir. Pilotta logonun kendi depolamamıza yüklenmesi değerlendirilecek (K-024).
+- "Gerçek işlem yap" görevinin hukuki değerlendirmesi bekliyor (K-017); platform ayarla kapatabiliyor (K-022).
+- Görev sayısı ayrı bir sınırla değil, şablon ve dönem kombinasyonu sayısıyla (8) sınırlı. Şablon listesi büyürse oyuncu ekranındaki görev sayısı için ayrı bir üst sınır gerekir.

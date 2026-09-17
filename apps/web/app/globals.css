@@ -4,6 +4,10 @@
   --text: #eef1f6;
   --muted: #8d96a8;
   --accent: #c6f24e;
+  /* Ana rengin üstündeki yazı rengi; marka rengi değişince (FR-22) birlikte güncellenir. */
+  --accent-text: #12151c;
+  /* Koyu zemin üstünde marka rengiyle yazılan yazı: koyu marka renklerinde açılmış tonu kullanılır. */
+  --accent-readable: #c6f24e;
 }
 
 * {
@@ -36,7 +40,7 @@ p {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-readable);
 }
 
 strong {
@@ -117,13 +121,13 @@ a.card:hover {
 
 .badge-running {
   background: var(--accent);
-  color: var(--bg);
+  color: var(--accent-text);
 }
 
 .badge-joined {
   background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--accent-readable);
+  border: 1px solid var(--accent-readable);
 }
 
 .big {
@@ -133,7 +137,7 @@ a.card:hover {
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg);
+  color: var(--accent-text);
   align-self: stretch;
 }
 
@@ -304,7 +308,7 @@ button.link:disabled {
 }
 
 .xp {
-  color: var(--accent);
+  color: var(--accent-readable);
 }
 
 a.real-account {
@@ -312,8 +316,8 @@ a.real-account {
   text-align: center;
   padding: 12px 16px;
   border-radius: 12px;
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  border: 1px solid var(--accent-readable);
+  color: var(--accent-readable);
   font-weight: 700;
   text-decoration: none;
 }
@@ -503,7 +507,7 @@ button.danger {
 
 .button-link.primary {
   background: var(--accent);
-  color: var(--bg);
+  color: var(--accent-text);
 }
 
 .form .row.two {
@@ -569,4 +573,57 @@ select:disabled {
   .inline-form .row {
     grid-template-columns: 1fr;
   }
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  max-height: 32px;
+  max-width: 140px;
+  object-fit: contain;
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  background: var(--preview-color, var(--accent));
+  color: var(--preview-text, var(--accent-text));
+}
+
+.form .row.four {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cell-input {
+  width: 80px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
+input[type='color'] {
+  padding: 4px;
+  height: 46px;
+}
+
+@media (max-width: 720px) {
+  .form .row.four {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Marka önizlemesinde koyu zemin üstündeki yazı rengi. */
+.accent-sample {
+  font-weight: 700;
+  color: var(--preview-readable, var(--accent-readable));
 }

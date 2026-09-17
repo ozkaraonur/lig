@@ -1,3 +1,4 @@
+import { DEFAULT_PRIMARY_COLOR } from '@lig/shared';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PLAYER_TOKEN_AUDIENCE } from '@lig/shared';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
@@ -24,7 +25,11 @@ export class InMemoryTenantDirectory implements TenantDirectory {
   }
   async findPublicInfo(tenantId: string) {
     return this.tenants.some((t) => t.tenantId === tenantId)
-      ? { name: 'Test Platform', realTradeUrl: 'https://platform.test/trade' }
+      ? {
+          name: 'Test Platform',
+          realTradeUrl: 'https://platform.test/trade',
+          branding: { primaryColor: DEFAULT_PRIMARY_COLOR, logoUrl: null },
+        }
       : null;
   }
 }

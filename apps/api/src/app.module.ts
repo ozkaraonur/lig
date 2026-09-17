@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AdminLeaguesModule } from './admin-leagues/admin-leagues.module';
+import { AdminSettingsModule } from './admin-settings/admin-settings.module';
 import { AdminTeamModule } from './admin-team/admin-team.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -34,6 +35,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AdminAuthModule,
     AdminTeamModule,
     AdminLeaguesModule,
+    AdminSettingsModule,
   ],
 })
 export class AppModule {}

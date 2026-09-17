@@ -275,6 +275,8 @@ export const quests = pgTable(
   },
   (t) => [
     index().on(t.tenantId, t.active),
+    // Aynı şablon ve dönemden iki görev, aynı işi iki kez saydırırdı (FR-21).
+    unique().on(t.tenantId, t.template, t.period),
     check('quests_template_known', sql`${t.template} in (${inList(QUEST_TEMPLATES)})`),
     check('quests_period_known', sql`${t.period} in (${inList(QUEST_PERIODS)})`),
     check('quests_target_positive', sql`${t.targetCount} > 0`),

@@ -28,6 +28,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'league.updated': 'Ligi düzenledi',
   'league.deleted': 'Ligi sildi',
   'compliance.changed': 'Uyum ayarını değiştirdi',
+  'quest.created': 'Görev ekledi',
+  'quest.updated': 'Görevi düzenledi',
+  'quest.deleted': 'Görevi sildi',
+  'branding.changed': 'Marka ayarını değiştirdi',
 };
 
 export const LEAGUE_STATUS_LABELS: Record<LeagueStatus, string> = {

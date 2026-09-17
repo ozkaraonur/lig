@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError } from '../../../lib/api';
 import { formatDateRange, LEAGUE_PHASE_LABELS, LEAGUE_TYPE_LABELS } from '../../../lib/labels';
 import { LeaderboardSection } from './leaderboard-section';
+import { BrandingStyle } from '../../branding';
 import { RealAccountLink } from '../../real-account-link';
 import { VirtualMoneyNotice } from '../../virtual-money-notice';
 import { PortfolioSection } from './portfolio-section';
@@ -189,6 +190,7 @@ export default function LeaguePage() {
 
       {league.joined && league.phase === 'upcoming' && <p>Lig başlayınca işlem yapabilirsin.</p>}
 
+      {me && <BrandingStyle branding={me.platform.branding} />}
       {me && <RealAccountLink platform={me.platform} />}
 
       {league.phase !== 'upcoming' && (

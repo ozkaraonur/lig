@@ -1,3 +1,4 @@
+import { type PublicBranding } from '@lig/shared';
 /**
  * Giriş modülünün dış dünyayla konuştuğu arayüzler. Gerçek uygulamada Redis ve PostgreSQL,
  * testlerde bellek içi sahteleri kullanılır.
@@ -12,6 +13,8 @@ export interface TenantKey {
 export interface TenantPublicInfo {
   name: string;
   realTradeUrl: string | null;
+  /** Marka ayarları (FR-22). */
+  branding: PublicBranding;
 }
 
 export interface TenantDirectory {

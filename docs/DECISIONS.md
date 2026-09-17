@@ -171,3 +171,24 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
   - "Gerçek hesabıma geç" butonu: kapalıyken oyuncuya platform adresi hiç gönderilmez.
   - "Gerçek işlem yap" görevi: kapalıyken görev listelenmez, ilerlemez, XP vermez. Hukuki değerlendirme gelene kadar platform kapatabilsin diye.
 - **Uygulama:** Ayarlar sunucuda uygulanır (`findPublicInfo`, `questStore.listActive`); arayüzde gizlemek yeterli sayılmaz.
+
+## K-023 · Görev şablonları: sabit şablon, platform başına tek görev
+
+- **Bağlam:** FR-21 yöneticinin görev tanımlamasını istiyor. Serbest metinli görev, ilerlemenin nasıl sayılacağı belirsiz olduğu için mümkün değil: ilerleme her zaman kaynak veriden sayılıyor (emirler, üyelikler, platform olayları).
+- **Karar:** Yönetici yalnızca hazır şablonlardan seçer (`join_league`, `place_orders`, `trade_distinct_assets`, `real_trade`), dönemi (tek seferlik / haftalık), hedefi ve XP ödülünü belirler. Görev başlığı şablondan ve hedeften üretilir; yönetici metin yazmaz. Böylece oyuncu ekranındaki metin her platformda tutarlı ve XSS yüzeyi yok.
+- **Şablon ve dönem sonradan değişmez:** Yalnızca hedef, XP ve aktiflik değişir. Şablonu değişen görev, oyuncuların birikmiş ilerlemesini anlamsız hale getirirdi.
+- **Aynı şablon + dönemden tek görev:** `quests` tablosunda `(tenant_id, template, period)` tekil indeksi (`0009_quest_unique.sql`). İki "bu hafta 5 emir ver" görevi aynı olaydan iki kez XP verirdi. Sınır veritabanında: iki eşzamanlı istek de aynı görevi açamaz.
+- **Ayrı sayı sınırı yok:** Görev sayısı şablon ve dönem kombinasyonu kadar olabilir (bugün 4 şablon × 2 dönem = 8). Önce "en fazla 20 görev" kontrolü yazılmıştı; tekil indeks zaten 8'i geçirmediği için ölü koddu ve kaldırıldı. Şablon listesi büyürse oyuncu ekranındaki görev sayısı için ayrı bir sınır gerekir.
+- **Silme yerine pasife alma:** XP dağıtmış görev silinemez (`completions > 0`), yalnızca pasife alınır. Silinse `xp_ledger` kayıtları kaynaksız kalır ve XP'nin nereden geldiği denetlenemez. Hiç XP dağıtmamış görev silinebilir.
+- **Ödül yalnızca XP:** Şemada para alanı yok; fazladan alan 400 ile reddedilir (FR-24, NFR-06).
+
+## K-024 · Marka ayarları: renkten hesaplanan iki yazı rengi
+
+- **Kapsam (FR-22):** Platform adı, ana renk ve logo adresi. Renk `tenants.theme` jsonb alanında saklanır.
+- **Yazı rengi ayarlanmaz, hesaplanır.** Yönetici okunmaz bir kombinasyon seçemesin diye iki değer renkten üretilir (`@lig/shared`, saf fonksiyon, testli):
+  - `--accent-text`: ana rengin **üstündeki** yazı (butonlar). WCAG göreli parlaklığa göre beyaz ya da koyu.
+  - `--accent-readable`: koyu zeminde **ana renkle yazılan** yazı (link, XP, rozet, "gerçek hesabıma geç"). Renk, sayfa zemini (`#0d0f14`) ile kontrast 4.5:1 olana kadar beyaza doğru açılır. Lacivert (`#1d3f8f`) seçildiğinde yazılar zeminle karışıyordu; tarayıcı testi bunu yakaladı.
+  - Zaten yeterli kontrasta sahip renk (varsayılan `#c6f24e`) olduğu gibi kalır.
+- **Logo yalnızca https:** Adres sunucuda doğrulanır; kayıt elle bozulsa bile oyuncuya yalnızca `https://` adresi gider. `javascript:` ya da `data:` adresi oyuncunun oturumunda kod çalıştırma riski taşır.
+- **Platform adı:** HTML ve kontrol karakteri kabul edilmez, 2-40 karakter. Ad denetim kaydına eski ve yeni değeriyle girer.
+- **Yükleme yok:** Logo dosyası sunucuya yüklenmez, platform kendi adresini verir. Dosya yükleme depolama, boyut ve içerik denetimi gerektirir; pilotta değerlendirilir.

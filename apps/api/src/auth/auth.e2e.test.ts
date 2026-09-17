@@ -152,7 +152,11 @@ describe('GET /auth/me', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
       player: { id: expect.any(String), displayName: 'Ece', xp: 0 },
-      platform: { name: 'Test Platform', realTradeUrl: 'https://platform.test/trade' },
+      platform: {
+        name: 'Test Platform',
+        realTradeUrl: 'https://platform.test/trade',
+        branding: { primaryColor: '#c6f24e', logoUrl: null },
+      },
     });
   });
 });

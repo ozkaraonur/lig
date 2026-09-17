@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type PublicBranding } from './branding';
 
 /** Platformun imzaladığı oyuncu token'ının `aud` değeri. Başka bir hizmet için üretilmiş token kabul edilmez. */
 export const PLAYER_TOKEN_AUDIENCE = 'lig';
@@ -46,6 +47,8 @@ export interface PublicPlayer {
 
 export interface PublicPlatform {
   name: string;
+  /** Marka ayarları (FR-22): oyuncu ekranının rengi ve logosu. */
+  branding: PublicBranding;
   /** "Gerçek hesabıma geç" (FR-08). Tanımlı değilse buton gösterilmez. */
   realTradeUrl: string | null;
 }

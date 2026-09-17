@@ -1,0 +1,1 @@
+ALTER TABLE "quests" ADD CONSTRAINT "quests_tenantId_template_period_unique" UNIQUE("tenant_id","template","period");

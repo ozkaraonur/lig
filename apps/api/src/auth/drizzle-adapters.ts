@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { DEFAULT_PRIMARY_COLOR } from '@lig/shared';
 import { and, eq } from 'drizzle-orm';
 import { DB, type Database } from '../db/db.module';
 import { players, tenants } from '../db/schema';
@@ -30,15 +31,22 @@ export class DrizzleTenantDirectory implements TenantDirectory {
         name: tenants.name,
         realTradeUrl: tenants.realTradeUrl,
         realTradeButtonEnabled: tenants.realTradeButtonEnabled,
+        theme: tenants.theme,
       })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
       .limit(1);
     if (!row) return null;
     // Uyum ayarı kapalıysa (FR-24) adres oyuncuya hiç gönderilmez; buton da görünmez.
+    const theme = (row.theme ?? {}) as { primaryColor?: string; logoUrl?: string | null };
     return {
       name: row.name,
       realTradeUrl: row.realTradeButtonEnabled ? safeHttpUrl(row.realTradeUrl) : null,
+      branding: {
+        primaryColor: theme.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+        // Kayıt elle bozulmuş olsa bile oyuncu ekranına yalnızca https adresi gider.
+        logoUrl: theme.logoUrl?.startsWith('https://') ? theme.logoUrl : null,
+      },
     };
   }
 }

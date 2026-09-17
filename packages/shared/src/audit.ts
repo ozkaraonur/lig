@@ -24,6 +24,10 @@ export const AUDIT_ACTIONS = [
   'league.updated',
   'league.deleted',
   'compliance.changed',
+  'quest.created',
+  'quest.updated',
+  'quest.deleted',
+  'branding.changed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

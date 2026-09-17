@@ -3,6 +3,7 @@
 import { type MeResponse } from '@lig/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError, MOCK_PLATFORM_URL } from '../lib/api';
+import { BrandingStyle, BrandLogo } from './branding';
 import { LeagueList } from './league-list';
 import { QuestList } from './quest-list';
 import { RealAccountLink } from './real-account-link';
@@ -39,7 +40,11 @@ export default function PlayerHome() {
 
   return (
     <main>
-      <h1>Ligler</h1>
+      {state.kind === 'player' && <BrandingStyle branding={state.platform.branding} />}
+      <div className="brand-header">
+        {state.kind === 'player' && <BrandLogo platform={state.platform} />}
+        <h1>Ligler</h1>
+      </div>
       {state.kind === 'loading' && <p>Yükleniyor...</p>}
       {state.kind === 'error' && <p role="alert">{state.message}</p>}
       {state.kind === 'anonymous' && (

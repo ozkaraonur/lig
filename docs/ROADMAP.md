@@ -43,8 +43,8 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 - [x] Yönetici yönetimi: davet linki, rol değiştirme, MFA sıfırlama, kaldırma, parola değiştirme, diğer oturumları kapatma (K-020)
 - [x] Lig oluşturma ve düzenleme: evreye göre kurallar, kontenjan ve geç katılım, yarış güvenliği (FR-20, K-021)
 - [x] Kilitli uyum ayarları, oyuncu ekranında sanal para uyarısı, platformun açıp kapatabildiği ayarlar (FR-24, K-022)
-- [ ] Görev şablonları (FR-21)
-- [ ] Marka ayarları (FR-22)
+- [x] Görev şablonları: hazır şablon, dönem, hedef ve XP; pasife alma, silme kuralı, eşzamanlı istek koruması (FR-21, K-023)
+- [x] Marka ayarları: platform adı, ana renk, logo; yazı renkleri kontrasta göre hesaplanır (FR-22, K-024)
 - [ ] Metrikler (FR-23, FR-31)
 - [ ] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), sektör bilgisi, açık tema
 - [ ] Seans saati kuralı: hisse varlıklarında seans dışında emir verilmez
