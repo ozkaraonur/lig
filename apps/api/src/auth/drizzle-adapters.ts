@@ -26,12 +26,20 @@ export class DrizzleTenantDirectory implements TenantDirectory {
 
   async findPublicInfo(tenantId: string): Promise<TenantPublicInfo | null> {
     const [row] = await this.db
-      .select({ name: tenants.name, realTradeUrl: tenants.realTradeUrl })
+      .select({
+        name: tenants.name,
+        realTradeUrl: tenants.realTradeUrl,
+        realTradeButtonEnabled: tenants.realTradeButtonEnabled,
+      })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
       .limit(1);
     if (!row) return null;
-    return { name: row.name, realTradeUrl: safeHttpUrl(row.realTradeUrl) };
+    // Uyum ayarı kapalıysa (FR-24) adres oyuncuya hiç gönderilmez; buton da görünmez.
+    return {
+      name: row.name,
+      realTradeUrl: row.realTradeButtonEnabled ? safeHttpUrl(row.realTradeUrl) : null,
+    };
   }
 }
 

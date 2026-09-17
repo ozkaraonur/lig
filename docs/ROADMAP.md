@@ -39,10 +39,10 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 - [x] Gizli değerlerin şifreli saklanması: webhook anahtarı ve MFA secret'ı, anahtar değişimi komutu (K-015)
 - [x] Yönetici girişi: e-posta, argon2id parola, zorunlu TOTP MFA, ayrı oturum, deneme sınırları, rol kontrolü (K-016, T6)
 - [x] ESLint 10, Vitest 4.1, drizzle-kit içindeki esbuild açığı; `npm audit` 0 uyarı (K-012)
-- [ ] Değiştirilemez denetim kaydı (NFR-07), giriş olayları dahil
-- [ ] Yönetici yönetimi: davet, rol değiştirme, MFA sıfırlama, parola değiştirme, açık oturumları kapatma
-- [ ] Lig oluşturma ve düzenleme (FR-20)
-- [ ] Kilitli uyum ayarları (FR-24)
+- [x] Değiştirilemez denetim kaydı (NFR-07): tetikleyici, özet zinciri, `audit:verify`, panel ekranı (K-019)
+- [x] Yönetici yönetimi: davet linki, rol değiştirme, MFA sıfırlama, kaldırma, parola değiştirme, diğer oturumları kapatma (K-020)
+- [x] Lig oluşturma ve düzenleme: evreye göre kurallar, kontenjan ve geç katılım, yarış güvenliği (FR-20, K-021)
+- [x] Kilitli uyum ayarları, oyuncu ekranında sanal para uyarısı, platformun açıp kapatabildiği ayarlar (FR-24, K-022)
 - [ ] Görev şablonları (FR-21)
 - [ ] Marka ayarları (FR-22)
 - [ ] Metrikler (FR-23, FR-31)
@@ -72,14 +72,16 @@ Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı
 - [ ] Gerçek fiyat akışı (FR-30): platformun fiyat ucu ya da lisanslı veri sağlayıcı (BIST lisans sorusu cevaplanmış olmalı)
 - [ ] Gerçek giriş: platformun imzaladığı oyuncu token'ı, anahtar değişim (rotasyon) süreci (FR-01)
 - [ ] Gerçek webhook: platformun işlem olayları, anahtar rotasyonu (FR-31)
+- [ ] Davet e-postası (K-020)
 - [ ] Anahtar yönetimi: OpenBao Transit adaptörü, ana anahtar uygulama ortamından çıkar (K-015)
-- [ ] Çoklu hesap: platformdan "kimliği doğrulanmış hesap" bilgisi (K-018)
+- [ ] Çoklu hesap: platformdan "kimliği doğrulanmış hesap" bilgisi; lig katılım koşulu olarak da kullanılır (K-018, K-021)
 - [ ] WebView içinde gerçek cihaz testi: iOS ve Android, çerez davranışı (NFR-08)
 - [ ] Veri konumu kararı: Türkiye'de barındırma gerekiyor mu (NFR-05). SPK'ya tabi kripto platformlarının birincil ve ikincil sistemleri yurt içinde olmalı; lig modülünün bu kapsama girip girmediği hukukçuya soruluyor
 
 ## Faz 4 · Sağlamlaştırma ve yayın
 
 - [ ] Satır düzeyinde erişim kontrolü (PostgreSQL RLS)
+- [ ] Veritabanı rolleri: uygulama tabloların sahibi olmayan rolle çalışır; denetim kaydına yalnızca INSERT/SELECT. Son özetin düzenli olarak dışarı yazılması (K-019)
 - [ ] Yük testi: 10.000 oyuncu, p95 < 300 ms (NFR-01)
 - [ ] Güvenlik testi, OWASP ASVS L2 kontrol listesi (NFR-03)
 - [ ] Barındırma: dev/staging/prod, Terraform, izleme ve loglar. Sağlayıcı veri konumu kararına göre seçilir (Türkiye'deki bir veri merkezi, müşterinin kendi sunucusu ya da bulut)

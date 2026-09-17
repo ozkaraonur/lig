@@ -12,6 +12,8 @@ export interface LeagueRecord {
   assetIds: string[];
   /** Kapanmış ligde değerleme fiyatları (FR-32); süren ligde null. */
   closingPrices: Record<string, string | null> | null;
+  maxMembers: number | null;
+  lateJoinAllowed: boolean;
   memberCount: number;
   /** Soran oyuncu bu ligin üyesi mi. */
   joined: boolean;
@@ -44,7 +46,8 @@ export interface LeagueRepository {
   findMembership(leagueId: string, playerId: string): Promise<MembershipRecord | null>;
   /**
    * Katılma koşullarını ve kaydı tek SQL cümlesinde yapar: lig bu tenant'ın, yayında ve bitmemiş olmalı,
-   * oyuncu aynı tenant'ın olmalı. Koşul tutmazsa ya da oyuncu zaten üyeyse `null` döner.
+   * oyuncu aynı tenant'ın olmalı, kontenjan dolmamış ve (lig başladıysa) geç katılım açık olmalı (FR-20).
+   * Koşul tutmazsa ya da oyuncu zaten üyeyse `null` döner.
    */
   createMembership(
     tenantId: string,

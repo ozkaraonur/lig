@@ -73,7 +73,11 @@ export class AdminAuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<AdminMeResponse> {
-    const completed = await this.auth.verifyMfa(request.cookies?.[ADMIN_PREAUTH_COOKIE_NAME], body.code);
+    const completed = await this.auth.verifyMfa(
+      request.cookies?.[ADMIN_PREAUTH_COOKIE_NAME],
+      body.code,
+      request.ip,
+    );
     void reply
       .header('cache-control', 'no-store')
       .clearCookie(ADMIN_PREAUTH_COOKIE_NAME, adminCookieOptions('/admin/auth'))
@@ -96,9 +100,10 @@ export class AdminAuthController {
   @UseGuards(AdminSessionGuard)
   async logout(
     @CurrentAdmin() admin: AuthenticatedAdmin,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<void> {
-    await this.auth.logout(admin.sessionToken);
+    await this.auth.logout(admin.account, admin.sessionToken, request.ip);
     void reply.clearCookie(ADMIN_SESSION_COOKIE_NAME, adminCookieOptions('/admin'));
   }
 }

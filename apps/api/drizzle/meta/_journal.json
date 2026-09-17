@@ -50,6 +50,20 @@
       "when": 1789641541594,
       "tag": "0006_encrypted_secrets_admin_mfa",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789645645945,
+      "tag": "0007_audit_log_admin_team",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789663980330,
+      "tag": "0008_league_admin_compliance",
+      "breakpoints": true
     }
   ]
 }

@@ -17,12 +17,33 @@ export function leaguePhase(
   return 'running';
 }
 
-/** Oyuncu yalnızca yayındaki ve bitmemiş bir lige katılabilir (FR-03). Başlamamış lige önceden katılmak serbesttir. */
+/**
+ * Oyuncu yalnızca yayındaki ve bitmemiş bir lige katılabilir (FR-03). Başlamamış lige önceden katılmak serbesttir.
+ * Katılım koşulları (FR-20): kontenjan dolmamış olmalı; lig başladıysa geç katılıma izin verilmiş olmalı.
+ */
 export function canJoinLeague(
-  league: { status: LeagueStatus; startsAt: Date; endsAt: Date },
+  league: {
+    status: LeagueStatus;
+    startsAt: Date;
+    endsAt: Date;
+    maxMembers?: number | null;
+    lateJoinAllowed?: boolean;
+    memberCount?: number;
+  },
   now: Date,
 ): boolean {
-  return league.status === 'active' && leaguePhase(league, now) !== 'ended';
+  if (league.status !== 'active') return false;
+  const phase = leaguePhase(league, now);
+  if (phase === 'ended') return false;
+  if (phase === 'running' && league.lateJoinAllowed === false) return false;
+  if (
+    league.maxMembers !== undefined &&
+    league.maxMembers !== null &&
+    (league.memberCount ?? 0) >= league.maxMembers
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** Fiyat, alındığı andan bu yana MAX_PRICE_AGE_MS'den eskiyse bayat sayılır; bayat fiyattan emir verilmez (T2). */
@@ -45,6 +66,9 @@ export interface LeagueSummary {
   joined: boolean;
   /** Lig kapanışı yapıldı: sıralama dondu, ödüller dağıtıldı (FR-32). */
   closed: boolean;
+  /** Kontenjan (FR-20). Sınırsızsa null. */
+  maxMembers: number | null;
+  lateJoinAllowed: boolean;
 }
 
 export interface LeagueAssetPrice {

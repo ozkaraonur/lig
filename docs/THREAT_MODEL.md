@@ -18,19 +18,19 @@
 
 ## İlk tehdit listesi
 
-| #   | STRIDE                 | Tehdit                                                                | Planlanan kontrol                                                                                                                                                               | Durum                               |
-| --- | ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| T1  | Spoofing               | Sahte ya da çalınmış oyuncu token'ı ile başka oyuncu olarak giriş     | Sadece RS256; `iss` ile platform bulunur ve yalnız onun anahtarıyla doğrulanır; `aud`, `exp`, `iat` kontrolü; ömür ≤ 5 dk; `jti` tek kullanım (Redis); genel hata mesajı        | Faz 1 ✓                             |
-| T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)             | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur                                                                                                            | Faz 1 ✓                             |
-| T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition)   | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                        | Faz 1 ✓                             |
-| T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)            | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                            | Oyuncu lig uçları ✓, Faz 2–4        |
-| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                           | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                         | Faz 1 ✓                             |
-| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                    | argon2id, zorunlu TOTP MFA, ayrı ve kısa ömürlü oturum, IP/hesap/kod deneme sınırları, rol her istekte veritabanından, JSON dışı gövde reddi (login CSRF)                       | Giriş ✓, yönetici yönetimi Faz 2    |
-| T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                  | Değiştirilemez denetim kaydı (NFR-07)                                                                                                                                           | Faz 2                               |
-| T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                  | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                                      | Faz 3                               |
-| T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                                 | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                                                                                                                 | Oyuncu uçları ✓, tenant bazlı Faz 4 |
-| T10 | Information disclosure | Secret'ların repoya, loga ya da veritabanı yedeğiyle sızması          | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması; webhook anahtarı ve MFA secret'ı satıra bağlı AES-256-GCM ile şifreli (K-015)                       | Faz 0 ✓, şifreleme Faz 2 ✓          |
-| T11 | Tampering / SSRF       | Fiyat akışı ile sahte fiyat ya da API'yi iç ağa istek atmaya yöneltme | Fiyat adresi yalnızca kurulumda girilir, üretimde sadece https, yönlendirme takip edilmez, 2 sn zaman aşımı, 256 KB sınırı; her fiyat ayrı doğrulanır, eski fiyat yeniyi ezemez | Faz 1 ✓                             |
+| #   | STRIDE                 | Tehdit                                                                | Planlanan kontrol                                                                                                                                                               | Durum                                  |
+| --- | ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| T1  | Spoofing               | Sahte ya da çalınmış oyuncu token'ı ile başka oyuncu olarak giriş     | Sadece RS256; `iss` ile platform bulunur ve yalnız onun anahtarıyla doğrulanır; `aud`, `exp`, `iat` kontrolü; ömür ≤ 5 dk; `jti` tek kullanım (Redis); genel hata mesajı        | Faz 1 ✓                                |
+| T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)             | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur                                                                                                            | Faz 1 ✓                                |
+| T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition)   | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                        | Faz 1 ✓                                |
+| T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)            | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                            | Oyuncu ve yönetici uçları ✓, RLS Faz 4 |
+| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                           | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                         | Faz 1 ✓                                |
+| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                    | argon2id, zorunlu TOTP MFA, ayrı ve kısa ömürlü oturum, IP/hesap/kod deneme sınırları, rol her istekte veritabanından, JSON dışı gövde reddi (login CSRF)                       | Giriş ✓, yönetici yönetimi Faz 2       |
+| T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                  | Yalnızca eklenebilir denetim tablosu (tetikleyici) ve platform başına SHA-256 özet zinciri, değişiklikle aynı transaction (K-019)                                               | Ekip ve giriş olayları ✓, lig Faz 2    |
+| T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                  | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                                      | Faz 3                                  |
+| T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                                 | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                                                                                                                 | Oyuncu uçları ✓, tenant bazlı Faz 4    |
+| T10 | Information disclosure | Secret'ların repoya, loga ya da veritabanı yedeğiyle sızması          | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması; webhook anahtarı ve MFA secret'ı satıra bağlı AES-256-GCM ile şifreli (K-015)                       | Faz 0 ✓, şifreleme Faz 2 ✓             |
+| T11 | Tampering / SSRF       | Fiyat akışı ile sahte fiyat ya da API'yi iç ağa istek atmaya yöneltme | Fiyat adresi yalnızca kurulumda girilir, üretimde sadece https, yönlendirme takip edilmez, 2 sn zaman aşımı, 256 KB sınırı; her fiyat ayrı doğrulanır, eski fiyat yeniyi ezemez | Faz 1 ✓                                |
 
 ## T1 uygulama ayrıntısı (Faz 1)
 
@@ -194,8 +194,67 @@
 **Bilinen açık konular:**
 
 - Hesap başına deneme sınırı, saldırganın bir yöneticiyi 15 dk girişten alıkoymasına izin veriyor. Hesap kalıcı kilitlenmediği için kabul edildi.
-- Kurtarma kodu yok. Telefonunu kaybeden yönetici için MFA sıfırlama şimdilik komut satırından; panelden sahip rolüyle 3. adımda.
-- Bir yöneticinin bütün oturumlarını tek seferde kapatma ve parola değiştirme 3. adımda. Rol ve MFA değişikliği bugün de açık oturumları etkiliyor (her istekte veritabanı okunur).
-- Giriş olayları henüz denetim kaydına yazılmıyor (NFR-07, 3. adım).
+- Kurtarma kodu yok. Telefonunu kaybeden yönetici için MFA'yı başka bir sahip panelden sıfırlar; tek sahipse komut satırı (`admin:reset-mfa`).
 - Ana anahtar pilot öncesinde uygulama ortam değişkeninde (K-015). Sunucuyu ele geçiren anahtara da ulaşır. Faz 3.5: OpenBao.
 - Oturum çerezi `Secure`. Yerel geliştirmede tarayıcılar `localhost`'u istisna tutuyor; yerel ağdaki başka bir cihazdan `http://` ile açılırsa giriş çalışmaz.
+
+## Denetim kaydı ve ekip yönetimi: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `apps/api/src/audit/`, `apps/api/src/admin-team/`. **Testler:** `audit.int.test.ts`, `admin-team.int.test.ts` (HTTP üzerinden, gerçek PostgreSQL ve Redis), `admin-auth.e2e.test.ts`. Ayrıca iki ayrı tarayıcı profiliyle davet, rol değişimi, parola değişimi ve kaldırma akışı denendi.
+
+| Saldırı ya da hata                                                               | Sonuç                                              | Test |
+| -------------------------------------------------------------------------------- | -------------------------------------------------- | ---- |
+| Uygulama üzerinden denetim kaydını değiştirme, silme, TRUNCATE                   | Veritabanı reddeder                                | ✓    |
+| Tetikleyiciyi kapatıp bir kaydın alanını ya da ayrıntısını değiştirme            | Doğrulama o kaydı bozuk gösterir                   | ✓    |
+| Tetikleyiciyi kapatıp aradan kayıt silme                                         | Doğrulama bir sonraki kaydı bozuk gösterir         | ✓    |
+| Değiştirilen kaydın özetini de yeniden hesaplama                                 | Sonraki kayıt eski özete bağlı, zincir kırılır     | ✓    |
+| Aynı platformda aynı anda 30 kayıt                                               | Zincir sağlam, iki kayıt aynı "önceki özet"i almaz | ✓    |
+| Başka platformun denetim kaydını görme                                           | Liste yalnızca kendi zinciri                       | ✓    |
+| Düzenleyici ya da izleyicinin ekip ve denetim uçlarına erişimi                   | 403                                                | ✓    |
+| Başka platformun yöneticisinin rolünü değiştirme, MFA'sını sıfırlama, silme      | 404 ("yok" ile aynı), değişiklik yok               | ✓    |
+| Kendi rolünü değiştirme, kendini kaldırma, kendi MFA'sını sıfırlama              | 403                                                | ✓    |
+| İki sahibin aynı anda birbirini düşürmesi (10 platformda aynı anda)              | Her platformda tam bir sahip kalır                 | ✓    |
+| Davet linkini ikinci kez kullanma, aynı linki 5 sekmeden aynı anda kabul etme    | Tek hesap açılır, diğerleri 404                    | ✓    |
+| Süresi dolmuş, iptal edilmiş ya da yenisiyle değiştirilmiş davet                 | 404, hepsi aynı yanıt                              | ✓    |
+| Davet token'ı tahmini                                                            | 256 bit; IP başına 15 dk'da 30 denemeden sonra 429 | ✓    |
+| Başka platformda yönetici olan e-postayla daveti kabul edip o hesabı ele geçirme | 409, mevcut hesap değişmez                         | ✓    |
+| Davet token'ının veritabanında ya da denetim kaydında görünmesi                  | Yalnızca özeti saklanır, kayıtta yok               | ✓    |
+| Parolası çalınmış yöneticinin açık oturumlarının devam etmesi                    | Parola değişince bütün oturumlar düşer             | ✓    |
+| MFA'sı sıfırlanan ya da kaldırılan yöneticinin açık oturumu                      | Bir sonraki istekte 401                            | ✓    |
+| Mevcut parolayı bilmeden parola değiştirme                                       | 401, yönetici başına 15 dk'da 5 deneme             | ✓    |
+| Başka sitedeki formdan daveti kabul ettirme                                      | 415                                                | ✓    |
+
+**Bilinen açık konular:**
+
+- Veritabanı sahibi tetikleyiciyi kapatıp zincirin sonundan kayıt silebilir; bu zincirden anlaşılmaz. Faz 4: son özetin dışarı yazılması, uygulamanın ayrı ve kısıtlı veritabanı rolüyle çalışması (K-019).
+- Denetim kaydında yöneticilerin IP adresi var (KVKK açısından kişisel veri). Saklama süresi ve imha kuralı pilot öncesinde hukukçuyla belirlenmeli; kayıt değiştirilemez olduğu için imha ancak zincir bazında arşivleme ile yapılabilir.
+- Davet linki sahibin kendi kanalıyla iletiliyor (e-posta, mesaj). Link ele geçirilirse 72 saat içinde başkası hesabı açabilir; sahip ekip listesinde yeni hesabı görür ve kaldırabilir. Pilotta e-postayla gönderim.
+
+## Lig yönetimi ve uyum ayarları: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `apps/api/src/admin-leagues/`, `apps/api/src/leagues/`. **Testler:** `admin-leagues.int.test.ts` (HTTP üzerinden, gerçek PostgreSQL ve Redis), `drizzle-league.repository.int.test.ts`, `leagues.e2e.test.ts`, `packages/shared/src/admin-leagues.test.ts`. Ayrıca tarayıcıda lig oluşturma, kontenjan dolunca katılamama, düzenleme ve uyum ayarı akışı denendi.
+
+| Saldırı ya da hata                                            | Sonuç                                                | Test |
+| ------------------------------------------------------------- | ---------------------------------------------------- | ---- |
+| İzleyicinin lig oluşturması, düzenlemesi, silmesi             | 403                                                  | ✓    |
+| Başka platformun ligini görme, düzenleme, silme               | 404 ("yok" ile aynı)                                 | ✓    |
+| Başka platformun varlığıyla lig kurma                         | 400                                                  | ✓    |
+| Lige nakit ödül alanı ya da kapanış tarihi gönderme           | 400, katı şema                                       | ✓    |
+| Katılımcısı olan ligin başlangıç bakiyesini değiştirme        | 409 `LEAGUE_LOCKED`                                  | ✓    |
+| Süren ligin başlangıcını, tipini değiştirme, varlık çıkarma   | 409 `LEAGUE_LOCKED`                                  | ✓    |
+| Süren ligin bitişini şimdiye çekip anında kapatma             | 400                                                  | ✓    |
+| Kapanmış ligde herhangi bir değişiklik                        | 409                                                  | ✓    |
+| Kontenjanı mevcut katılımcı sayısının altına indirme          | 400                                                  | ✓    |
+| 10 kişilik lige aynı anda 30 katılım                          | Tam 10 üyelik                                        | ✓    |
+| Bakiye değişirken aynı anda katılım (12 tur)                  | Her üyenin bakiyesi ligin son bakiyesiyle aynı       | ✓    |
+| Geç katılımı kapalı süren lige katılma                        | 409                                                  | ✓    |
+| İzleyicinin uyum ayarını değiştirmesi                         | 403                                                  | ✓    |
+| Kilitli uyum ayarını (nakit ödül, kişisel öneri) API ile açma | 400, yazma ucu yok                                   | ✓    |
+| Buton kapalıyken oyuncunun platform adresini alması           | `/auth/me` adresi göndermez                          | ✓    |
+| Görev kapalıyken "gerçek işlem yap" görevinden XP             | Görev listelenmez ve değerlendirilmez                | ✓    |
+| Lig ve uyum değişikliklerinin inkârı                          | Eski ve yeni değerle denetim kaydında, zincir sağlam | ✓    |
+
+**Bilinen açık konular:**
+
+- Katılım koşulu olarak "kimliği doğrulanmış hesap" yok; platform token'ına bu bilgi eklenince gelecek (K-018, K-021).
+- Uyum ayarlarında sahibin kararı tek kişilik. Pilotta "iki onay" (dört göz) istenebilir.

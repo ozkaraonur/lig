@@ -20,6 +20,9 @@ import { LEAGUE_REPOSITORY, type LeagueRecord, type LeagueRepository, type Membe
 export const leagueNotFound = () => new AppError('NOT_FOUND', 404, 'Lig bulunamadı.');
 
 export const leagueNotJoinable = () => new AppError('LEAGUE_NOT_ACTIVE', 409, 'Bu lig katılıma açık değil.');
+export const leagueFull = () => new AppError('LEAGUE_FULL', 409, 'Bu ligin kontenjanı doldu.');
+export const lateJoinClosed = () =>
+  new AppError('LEAGUE_NOT_ACTIVE', 409, 'Bu lig başladı ve başladıktan sonra katılıma kapalı.');
 
 const PHASE_ORDER: Record<LeaguePhase, number> = { running: 0, upcoming: 1, ended: 2 };
 
@@ -73,6 +76,12 @@ export class LeaguesService {
     const existing = await this.leagues.findMembership(league.id, session.playerId);
     if (existing) return { created: false, membership: toMembership(existing) };
 
+    // Sebep, katılma denemesinden sonra tekrar okunan ligden anlaşılır (kontenjan o arada dolmuş olabilir).
+    const fresh = (await this.leagues.findVisible(session.tenantId, league.id, session.playerId)) ?? league;
+    if (fresh.status === 'active' && leaguePhase(fresh, now) !== 'ended') {
+      if (fresh.maxMembers !== null && fresh.memberCount >= fresh.maxMembers) throw leagueFull();
+      if (leaguePhase(fresh, now) === 'running' && !fresh.lateJoinAllowed) throw lateJoinClosed();
+    }
     throw leagueNotJoinable();
   }
 
@@ -115,6 +124,8 @@ function toSummary(row: LeagueRecord, now: Date): LeagueSummary {
     memberCount: row.memberCount,
     joined: row.joined,
     closed: row.status === 'finished',
+    maxMembers: row.maxMembers,
+    lateJoinAllowed: row.lateJoinAllowed,
   };
 }
 

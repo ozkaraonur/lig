@@ -67,7 +67,12 @@ export class AdminSessionGuard implements CanActivate {
     }
 
     const account = await this.admins.findById(session.adminId);
-    if (!account || account.tenantId !== session.tenantId || account.mfaSecretCiphertext === null) {
+    if (
+      !account ||
+      account.tenantId !== session.tenantId ||
+      account.mfaSecretCiphertext === null ||
+      account.sessionVersion !== session.sessionVersion
+    ) {
       await this.sessions.destroy(token);
       throw unauthenticated();
     }

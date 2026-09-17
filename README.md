@@ -60,6 +60,7 @@ Durdurmak için terminalde `Ctrl + C`, altyapıyı kapatmak için `npm run infra
 | `npm run admin:create -- --issuer mock-platform --email e@posta --role owner` | Yönetici hesabı açar, geçici parolayı bir kez yazar                                      |
 | `npm run admin:reset-mfa -- --email e@posta`                                  | Yöneticinin MFA'sını sıfırlar, sonraki girişte yeniden kurulur                           |
 | `npm run secrets:new-key`                                                     | Şifreleme anahtarı üretir (`SECRET_KEYS`)                                                |
+| `npm run audit:verify`                                                        | Denetim kaydı zincirlerini doğrular; bozuk kayıt varsa numarasını yazar (K-019)          |
 | `npm run secrets:rotate`                                                      | Anahtar değişiminden sonra şifreli kayıtları yeni anahtarla yeniden yazar (K-015)        |
 
 ## Repo yapısı

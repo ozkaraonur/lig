@@ -195,6 +195,24 @@ describe('DrizzleLeagueRepository (integration)', () => {
     expect(events).toMatchObject([{ tenantId: tenantA, type: 'league_joined', processedAt: null }]);
   });
 
+  it('never goes over the member limit when 30 players join at once (FR-20)', async () => {
+    const league = await addLeague(tenantA, { maxMembers: 10 });
+    const joiners = await Promise.all(Array.from({ length: 30 }, () => addPlayer(tenantA)));
+    const results = await Promise.all(joiners.map((p) => repo.createMembership(tenantA, league, p, NOW)));
+    expect(results.filter(Boolean)).toHaveLength(10);
+    const rows = await ctx.db.select().from(memberships).where(eq(memberships.leagueId, league));
+    expect(rows).toHaveLength(10);
+  });
+
+  it('respects late join: closed after start, open before start', async () => {
+    const running = await addLeague(tenantA, { lateJoinAllowed: false });
+    expect(await repo.createMembership(tenantA, running, playerA, NOW)).toBeNull();
+    const upcoming = await addLeague(tenantA, { lateJoinAllowed: false, startsAt: at(1), endsAt: at(8) });
+    expect(await repo.createMembership(tenantA, upcoming, playerA, NOW)).not.toBeNull();
+    const listed = await repo.findVisible(tenantA, upcoming, playerA);
+    expect(listed).toMatchObject({ lateJoinAllowed: false, maxMembers: null, memberCount: 1 });
+  });
+
   it('cannot join once an admin closes the league, even with a stale read of it', async () => {
     const league = await addLeague(tenantA);
     const seen = await repo.findVisible(tenantA, league, playerA);

@@ -17,6 +17,7 @@ import { apiFetch, ApiRequestError } from '../../../lib/api';
 import { formatDateRange, LEAGUE_PHASE_LABELS, LEAGUE_TYPE_LABELS } from '../../../lib/labels';
 import { LeaderboardSection } from './leaderboard-section';
 import { RealAccountLink } from '../../real-account-link';
+import { VirtualMoneyNotice } from '../../virtual-money-notice';
 import { PortfolioSection } from './portfolio-section';
 import { TradePanel } from './trade-panel';
 
@@ -141,7 +142,9 @@ export default function LeaguePage() {
       </div>
       <p>
         {LEAGUE_TYPE_LABELS[league.type]} · {formatDateRange(league.startsAt, league.endsAt)} ·{' '}
-        {league.memberCount} oyuncu
+        {league.memberCount}
+        {league.maxMembers !== null ? ` / ${league.maxMembers}` : ''} oyuncu
+        {!league.lateJoinAllowed && league.phase === 'upcoming' && ' · Başladıktan sonra katılım kapanır'}
       </p>
 
       {league.joined ? (
@@ -177,7 +180,11 @@ export default function LeaguePage() {
           {joinError && <p role="alert">{joinError}</p>}
         </div>
       ) : (
-        <p>Bu lig katılıma kapalı.</p>
+        <p>
+          {league.maxMembers !== null && league.memberCount >= league.maxMembers
+            ? 'Bu ligin kontenjanı doldu.'
+            : 'Bu lig katılıma kapalı.'}
+        </p>
       )}
 
       {league.joined && league.phase === 'upcoming' && <p>Lig başlayınca işlem yapabilirsin.</p>}
@@ -192,6 +199,8 @@ export default function LeaguePage() {
           onFinal={() => void load()}
         />
       )}
+
+      <VirtualMoneyNotice />
 
       <h2>Fiyatlar</h2>
       <table className="prices">

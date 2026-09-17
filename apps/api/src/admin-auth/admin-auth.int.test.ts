@@ -98,7 +98,7 @@ describe('RedisTokenStore (real Redis)', () => {
     const keys = await ctx.redis.keys(`${prefix}:*`);
     if (keys.length > 0) await ctx.redis.del(...keys);
   });
-  const data = { adminId: randomUUID(), tenantId: randomUUID(), createdAtMs: 1 };
+  const data = { adminId: randomUUID(), tenantId: randomUUID(), sessionVersion: 0, createdAtMs: 1 };
 
   it('stores only the token digest as key and validates what it reads', async () => {
     const token = await store.create(data, 60);

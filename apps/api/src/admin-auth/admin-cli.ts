@@ -11,9 +11,10 @@
 import { randomBytes } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { ADMIN_ROLES, type AdminRole, adminEmail } from '@lig/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { recordAudit } from '../audit/audit-log';
 import { loadEnv } from '../config/env';
 import * as schema from '../db/schema';
 import { hashPassword } from './password-hasher';
@@ -51,11 +52,26 @@ async function main(): Promise<void> {
       if (!tenant) fail(`"${values.issuer}" issuer'lı platform bulunamadı.`);
 
       const password = randomBytes(18).toString('base64url');
-      const inserted = await db
-        .insert(schema.adminUsers)
-        .values({ tenantId: tenant.id, email: email.data, role, passwordHash: await hashPassword(password) })
-        .onConflictDoNothing({ target: schema.adminUsers.email })
-        .returning({ id: schema.adminUsers.id });
+      const passwordHash = await hashPassword(password);
+      const inserted = await db.transaction(async (tx) => {
+        const rows = await tx
+          .insert(schema.adminUsers)
+          .values({ tenantId: tenant.id, email: email.data, role, passwordHash })
+          .onConflictDoNothing({ target: schema.adminUsers.email })
+          .returning({ id: schema.adminUsers.id });
+        const [created] = rows;
+        if (created) {
+          await recordAudit(tx, {
+            tenantId: tenant.id,
+            action: 'admin.created',
+            actor: { type: 'cli' },
+            target: { type: 'admin', id: created.id, label: email.data },
+            metadata: { role },
+            occurredAt: new Date(),
+          });
+        }
+        return rows;
+      });
       if (inserted.length === 0) fail('Bu e-postayla bir yönetici zaten var.');
       print(`Yönetici açıldı: ${email.data} (${role}), platform: ${tenant.name}`);
       print(`Geçici parola (bir kez gösterilir): ${password}`);
@@ -64,13 +80,31 @@ async function main(): Promise<void> {
     }
 
     if (command === 'reset-mfa') {
-      const updated = await db
-        .update(schema.adminUsers)
-        .set({ mfaSecretCiphertext: null, mfaEnabledAt: null, mfaLastUsedStep: null })
-        .where(eq(schema.adminUsers.email, email.data))
-        .returning({ id: schema.adminUsers.id });
+      const updated = await db.transaction(async (tx) => {
+        const rows = await tx
+          .update(schema.adminUsers)
+          .set({
+            mfaSecretCiphertext: null,
+            mfaEnabledAt: null,
+            mfaLastUsedStep: null,
+            sessionVersion: sql`${schema.adminUsers.sessionVersion} + 1`,
+          })
+          .where(eq(schema.adminUsers.email, email.data))
+          .returning({ id: schema.adminUsers.id, tenantId: schema.adminUsers.tenantId });
+        const [admin] = rows;
+        if (admin) {
+          await recordAudit(tx, {
+            tenantId: admin.tenantId,
+            action: 'admin.mfa.reset',
+            actor: { type: 'cli' },
+            target: { type: 'admin', id: admin.id, label: email.data },
+            occurredAt: new Date(),
+          });
+        }
+        return rows;
+      });
       if (updated.length === 0) fail('Bu e-postayla yönetici bulunamadı.');
-      // Açık oturumlar bir sonraki istekte düşer: AdminSessionGuard MFA'sı kapalı hesabı kabul etmez.
+      // Oturum sürümü arttı: açık oturumlar bir sonraki istekte düşer.
       print(`MFA sıfırlandı: ${email.data}. Bir sonraki girişte yeniden kurulacak.`);
       return;
     }

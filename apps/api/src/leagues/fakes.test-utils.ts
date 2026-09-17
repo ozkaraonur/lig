@@ -13,6 +13,8 @@ export interface StoredLeague {
   startingCash: string;
   assetIds: string[];
   closingPrices?: Record<string, string | null> | null;
+  maxMembers?: number | null;
+  lateJoinAllowed?: boolean;
 }
 
 /**
@@ -84,7 +86,11 @@ export class InMemoryLeagueRepository implements LeagueRepository {
         l.tenantId === tenantId &&
         l.status === 'active' &&
         l.type !== 'friends' &&
-        l.endsAt > now,
+        l.endsAt > now &&
+        (l.lateJoinAllowed !== false || l.startsAt > now) &&
+        (l.maxMembers === undefined ||
+          l.maxMembers === null ||
+          this.memberships.filter((m) => m.leagueId === l.id).length < l.maxMembers),
     );
     if (!league || this.players.get(playerId) !== tenantId) return null;
     if (await this.findMembership(leagueId, playerId)) return null;
@@ -104,6 +110,8 @@ export class InMemoryLeagueRepository implements LeagueRepository {
     return {
       ...l,
       closingPrices: l.closingPrices ?? null,
+      maxMembers: l.maxMembers ?? null,
+      lateJoinAllowed: l.lateJoinAllowed ?? true,
       memberCount: members.length,
       joined: members.some((m) => m.playerId === playerId),
     };

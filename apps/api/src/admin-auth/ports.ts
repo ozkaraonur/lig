@@ -8,6 +8,7 @@ export interface AdminAccount {
   role: AdminRole;
   mfaSecretCiphertext: string | null;
   mfaLastUsedStep: number | null;
+  sessionVersion: number;
 }
 
 export interface AdminRepository {
@@ -31,6 +32,8 @@ export interface AdminRepository {
 export interface AdminSessionData {
   adminId: string;
   tenantId: string;
+  /** Oturum açıldığındaki `admin_users.session_version`. Veritabanındakiyle uyuşmazsa oturum geçersiz. */
+  sessionVersion: number;
   createdAtMs: number;
 }
 

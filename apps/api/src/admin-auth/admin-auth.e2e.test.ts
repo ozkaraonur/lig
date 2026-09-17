@@ -7,6 +7,7 @@ import { configureApp } from '../app.setup';
 import { InMemoryRateLimiter, InMemorySessionStore } from '../auth/fakes.test-utils';
 import { RATE_LIMITER, SESSION_STORE } from '../auth/ports';
 import { SessionGuard } from '../auth/session.guard';
+import { AUDIT_LOG } from '../audit/audit-log';
 import { CLOCK_MS } from '../common/clock';
 import { developmentKeyring, LocalSecretCipher } from '../secrets/local-secret-cipher';
 import { SECRET_CIPHER, secretContext } from '../secrets/secret-cipher';
@@ -18,7 +19,7 @@ import {
   AdminAuthService,
 } from './admin-auth.service';
 import { AdminRoles, AdminSessionGuard } from './admin-session.guard';
-import { InMemoryAdminRepository, InMemoryTokenStore } from './fakes.test-utils';
+import { InMemoryAdminRepository, InMemoryAuditLog, InMemoryTokenStore } from './fakes.test-utils';
 import { ADMIN_PREAUTH_STORE, ADMIN_REPOSITORY, ADMIN_SESSION_STORE, type AdminSessionData } from './ports';
 import { base32Decode, totpCodeAt, totpStep } from './totp';
 
@@ -56,12 +57,14 @@ let app: NestFastifyApplication;
 let now: number;
 let admins: InMemoryAdminRepository;
 let sessions: InMemoryTokenStore<AdminSessionData>;
+let audit: InMemoryAuditLog;
 const cipher = new LocalSecretCipher(developmentKeyring());
 
 beforeEach(async () => {
   now = START;
   admins = new InMemoryAdminRepository();
   sessions = new InMemoryTokenStore();
+  audit = new InMemoryAuditLog();
   const moduleRef = await Test.createTestingModule({
     controllers: [AdminAuthController, ProtectedController, PlayerController],
     providers: [
@@ -75,6 +78,7 @@ beforeEach(async () => {
       { provide: SECRET_CIPHER, useValue: cipher },
       { provide: CLOCK_MS, useValue: () => now },
       { provide: SESSION_STORE, useValue: new InMemorySessionStore() },
+      { provide: AUDIT_LOG, useValue: audit },
     ],
   }).compile();
   app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
@@ -194,6 +198,19 @@ describe('first login with MFA enrollment', () => {
     expect(stored).not.toContain(secret);
     expect(await cipher.decrypt(stored, secretContext.adminMfaSecret(account?.id ?? ''))).toBe(secret);
     expect(admins.logins).toHaveLength(1);
+    expect(audit.actions()).toEqual(['admin.mfa.failed', 'admin.mfa.enrolled', 'admin.login.succeeded']);
+    expect(audit.entries[0]).toMatchObject({
+      tenantId: TENANT,
+      actor: { type: 'anonymous' },
+      metadata: { stage: 'setup' },
+    });
+    expect(audit.entries[2]).toMatchObject({
+      actor: { type: 'admin', adminId: account?.id, email: EMAIL },
+      target: { type: 'admin', id: account?.id },
+    });
+    // Denetim kaydına kod, secret ya da parola yazılmaz.
+    expect(JSON.stringify(audit.entries)).not.toContain(secret);
+    expect(JSON.stringify(audit.entries)).not.toContain(PASSWORD);
 
     // Giriş adımı kullanıldı: aynı çerezle ikinci oturum açılamaz.
     const reuse = await app.inject({
@@ -400,6 +417,20 @@ describe('admin session', () => {
     expect(res.json()).toEqual({ code: 'FORBIDDEN', message: 'Bu işlem için yetkin yok.' });
   });
 
+  it('drops every session of the admin when the session version moves', async () => {
+    const account = await admins.add({ tenantId: TENANT, email: EMAIL, password: PASSWORD });
+    const { session } = await enroll();
+    const stored = admins.accounts.get(account.id);
+    if (stored) stored.sessionVersion += 1;
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/auth/me',
+      cookies: { [ADMIN_SESSION_COOKIE_NAME]: session },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(sessions.entries.has(session)).toBe(false);
+  });
+
   it('logs out for good', async () => {
     await admins.add({ tenantId: TENANT, email: EMAIL, password: PASSWORD });
     const { session } = await enroll();
@@ -409,6 +440,7 @@ describe('admin session', () => {
       cookies: { [ADMIN_SESSION_COOKIE_NAME]: session },
     });
     expect(out.statusCode).toBe(204);
+    expect(audit.actions().at(-1)).toBe('admin.logout');
     expect(cookie(out, ADMIN_SESSION_COOKIE_NAME)?.value).toBe('');
     const after = await app.inject({
       method: 'GET',
@@ -474,5 +506,27 @@ describe('cross-site form posts (login CSRF)', () => {
       cookies: withPreAuth(res),
     });
     expect(setup.statusCode).toBe(200);
+  });
+});
+
+describe('CORS', () => {
+  it('lets only the web origin use PATCH and DELETE with cookies', async () => {
+    const preflight = (origin: string, method: string) =>
+      app.inject({
+        method: 'OPTIONS',
+        url: '/admin/team/x/role',
+        headers: {
+          origin,
+          'access-control-request-method': method,
+          'access-control-request-headers': 'content-type',
+        },
+      });
+    const ok = await preflight('http://localhost:3000', 'PATCH');
+    expect(ok.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+    expect(ok.headers['access-control-allow-credentials']).toBe('true');
+    expect(String(ok.headers['access-control-allow-methods'])).toContain('PATCH');
+    expect(String(ok.headers['access-control-allow-methods'])).toContain('DELETE');
+    const evil = await preflight('https://evil.example', 'DELETE');
+    expect(evil.headers['access-control-allow-origin']).not.toBe('https://evil.example');
   });
 });

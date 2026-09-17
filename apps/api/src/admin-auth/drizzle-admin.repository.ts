@@ -12,6 +12,7 @@ const accountColumns = {
   role: adminUsers.role,
   mfaSecretCiphertext: adminUsers.mfaSecretCiphertext,
   mfaLastUsedStep: adminUsers.mfaLastUsedStep,
+  sessionVersion: adminUsers.sessionVersion,
 };
 
 @Injectable()

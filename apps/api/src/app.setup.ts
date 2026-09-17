@@ -11,7 +11,12 @@ export async function configureApp(
 ): Promise<void> {
   await app.register(cookie);
   await app.register(helmet);
-  app.enableCors({ origin: options.webOrigin, credentials: true });
+  // Varsayılan CORS yöntemleri yalnızca GET, HEAD, POST; yönetim paneli PATCH ve DELETE de kullanıyor.
+  app.enableCors({
+    origin: options.webOrigin,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+  });
   rejectNonJsonBodies(app);
   app.useGlobalFilters(new AllExceptionsFilter());
 }

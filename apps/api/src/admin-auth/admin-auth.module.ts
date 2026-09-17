@@ -30,6 +30,6 @@ import { adminPreAuthData, adminSessionData } from './session-schemas';
       useFactory: (redis: Redis) => new RedisTokenStore(redis, 'admin-preauth', adminPreAuthData),
     },
   ],
-  exports: [AdminSessionGuard, ADMIN_REPOSITORY, ADMIN_SESSION_STORE, CLOCK_MS],
+  exports: [AdminAuthService, AdminSessionGuard, ADMIN_REPOSITORY, ADMIN_SESSION_STORE, CLOCK_MS],
 })
 export class AdminAuthModule {}

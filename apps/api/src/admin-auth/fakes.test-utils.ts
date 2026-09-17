@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { type AdminRole } from '@lig/shared';
+import { type AuditEntry, type AuditLog } from '../audit/audit-log';
 import { type AdminAccount, type AdminRepository, type TokenStore } from './ports';
 import { hashPassword } from './password-hasher';
 
@@ -18,6 +19,7 @@ export class InMemoryAdminRepository implements AdminRepository {
       role: options.role ?? 'owner',
       mfaSecretCiphertext: null,
       mfaLastUsedStep: null,
+      sessionVersion: 0,
     };
     this.accounts.set(account.id, account);
     return account;
@@ -77,5 +79,15 @@ export class InMemoryTokenStore<T> implements TokenStore<T> {
   }
   async destroy(token: string) {
     this.entries.delete(token);
+  }
+}
+
+export class InMemoryAuditLog implements AuditLog {
+  readonly entries: AuditEntry[] = [];
+  async append(entry: AuditEntry) {
+    this.entries.push(entry);
+  }
+  actions() {
+    return this.entries.map((e) => e.action);
   }
 }

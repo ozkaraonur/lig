@@ -114,6 +114,28 @@ Sahte platformda: `http://localhost:4100/trade` (gerçek işlem ve "son bildirim
 
 Web: `/admin/login`, `/admin/mfa/setup`, `/admin/mfa`, `/admin`. Hesap açma ve MFA sıfırlama şimdilik komut satırından: `npm run admin:create`, `npm run admin:reset-mfa`.
 
+## Denetim kaydı (NFR-07, K-019)
+
+`audit_events`: yalnızca eklenebilir (tetikleyici), platform başına SHA-256 özet zinciri. Yazma `recordAudit(tx, entry)` ile değişikliğin transaction'ı içinde; tek başına olaylar (giriş denemeleri) `AuditLog.append` ile. Okuma: `GET /admin/audit` (sayfalı), `GET /admin/audit/verify`; komut satırı `npm run audit:verify`.
+
+## Ekip ve hesap (K-020)
+
+- Sahip: `GET /admin/team`, `POST /admin/team/invites`, `DELETE /admin/team/invites/:id`, `PATCH /admin/team/:id/role`, `POST /admin/team/:id/mfa-reset`, `DELETE /admin/team/:id`.
+- Davetli (oturumsuz): `POST /admin/invites/lookup`, `POST /admin/invites/accept`. Link: `/admin/invite#token=...`.
+- Her yönetici: `POST /admin/account/password`, `POST /admin/account/sessions/revoke-others`.
+- Oturum geçersizleştirme `admin_users.session_version` ile: sürüm artınca o yöneticinin bütün oturumları düşer.
+
+Web: `/admin` (panel), `/admin/team`, `/admin/audit`, `/admin/account`, `/admin/invite`.
+
+## Lig yönetimi (FR-20, K-021) ve uyum ayarları (FR-24, K-022)
+
+- `GET /admin/leagues`, `GET /admin/leagues/assets`, `GET /admin/leagues/:id`: her rol.
+- `POST /admin/leagues`, `PATCH /admin/leagues/:id`, `DELETE /admin/leagues/:id`: sahip ve düzenleyici. Hangi alanın değişebileceği `leagueEditability` ile belirlenir ve yanıtta `editable` olarak döner.
+- Katılım koşulları `leagues.max_members` ve `leagues.late_join_allowed`; katılım SQL'inde uygulanır, lig başına danışma kilidiyle.
+- `GET /admin/compliance`: her rol. `PATCH /admin/compliance`: sahip; yalnızca `realTradeButton` ve `realTradeQuest`. Kilitli ayarlar `LOCKED_COMPLIANCE_SETTINGS` sabitinde.
+
+Web: `/admin/leagues`, `/admin/leagues/new`, `/admin/leagues/[id]`, `/admin/compliance`. Oyuncu ekranlarında kilitli sanal para uyarısı.
+
 ## Gizli değerler (K-015)
 
 Webhook anahtarı (`tenants.webhook_secret_ciphertext`) ve MFA secret'ı (`admin_users.mfa_secret_ciphertext`) `SecretCipher` ile şifreli. Bugünkü uygulama AES-256-GCM, anahtar `SECRET_KEYS` ortam değişkeninden (üretimde zorunlu, geliştirmede boşsa herkesin bildiği geliştirme anahtarı). Her değer kendi satırına bağlıdır (`secretContext`). Yeni anahtar: `npm run secrets:new-key`; değişim: yeni anahtarı başa ekle, `npm run secrets:rotate`. Faz 3.5'te aynı arayüzün OpenBao uygulaması gelir.

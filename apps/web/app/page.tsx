@@ -6,6 +6,7 @@ import { apiFetch, ApiRequestError, MOCK_PLATFORM_URL } from '../lib/api';
 import { LeagueList } from './league-list';
 import { QuestList } from './quest-list';
 import { RealAccountLink } from './real-account-link';
+import { VirtualMoneyNotice } from './virtual-money-notice';
 
 type State =
   | { kind: 'loading' }
@@ -63,6 +64,7 @@ export default function PlayerHome() {
           <RealAccountLink platform={state.platform} />
           <LeagueList />
           <QuestList onProgress={load} />
+          <VirtualMoneyNotice />
         </>
       )}
     </main>

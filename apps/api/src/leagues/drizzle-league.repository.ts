@@ -60,44 +60,55 @@ export class DrizzleLeagueRepository implements LeagueRepository {
   ): Promise<MembershipRecord | null> {
     // INSERT ... SELECT: lig koşulları ve kayıt aynı cümlede. Kontrol ile yazma arasında lig kapanamaz,
     // aynı anda gelen iki katılma isteği iki üyelik açamaz (unique + ON CONFLICT DO NOTHING).
+    // Kontenjan sayımı için lig başına danışma kilidi: aynı anda katılan 100 kişi sınırı aşamaz. Kilit yalnızca
+    // o ligin katılımlarını sıraya koyar; emirleri ve başka ligleri etkilemez.
     // Tablo ve kolon adları bilerek düz yazıldı: Drizzle, ham SQL içindeki kolon referanslarını tablo adı
     // olmadan üretir; iç içe sorgularda bu, kolonun yanlış tabloya bağlanmasına yol açar.
-    const result = await this.db.execute<{
-      id: string;
-      league_id: string;
-      player_id: string;
-      cash: string;
-      joined_at: Date | string;
-    }>(sql`
-      with created as (
-        insert into memberships (league_id, player_id, cash)
-        select l.id, p.id, l.starting_cash
-        from leagues l
-        join players p on p.id = ${playerId}::uuid and p.tenant_id = l.tenant_id
-        where l.id = ${leagueId}::uuid
-          and l.tenant_id = ${tenantId}::uuid
-          and l.status = 'active'
-          and l.type <> 'friends'
-          and l.ends_at > ${now.toISOString()}::timestamptz
-        on conflict (league_id, player_id) do nothing
-        returning id, league_id, player_id, cash, joined_at
-      ),
-      -- Görev olayı (FR-07) üyelikle aynı cümlede yazılır: üyelik oluşmadıysa olay da oluşmaz.
-      event as (
-        insert into outbox_events (tenant_id, player_id, type)
-        select ${tenantId}::uuid, created.player_id, 'league_joined' from created
-      )
-      select * from created
-    `);
-    const row = result.rows[0];
-    if (!row) return null;
-    return {
-      id: row.id,
-      leagueId: row.league_id,
-      playerId: row.player_id,
-      cash: row.cash,
-      joinedAt: new Date(row.joined_at),
-    };
+    const nowIso = now.toISOString();
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`league-join:${leagueId}`}, 0))`);
+      const result = await tx.execute<{
+        id: string;
+        league_id: string;
+        player_id: string;
+        cash: string;
+        joined_at: Date | string;
+      }>(sql`
+        with created as (
+          insert into memberships (league_id, player_id, cash)
+          select l.id, p.id, l.starting_cash
+          from leagues l
+          join players p on p.id = ${playerId}::uuid and p.tenant_id = l.tenant_id
+          where l.id = ${leagueId}::uuid
+            and l.tenant_id = ${tenantId}::uuid
+            and l.status = 'active'
+            and l.type <> 'friends'
+            and l.ends_at > ${nowIso}::timestamptz
+            and (l.late_join_allowed or l.starts_at > ${nowIso}::timestamptz)
+            and (l.max_members is null
+                 or (select count(*) from memberships m where m.league_id = l.id) < l.max_members)
+          -- Yönetici ligi düzenlerken (FOR UPDATE) katılım bekler ve güncel bakiye ile koşulları görür.
+          for share of l
+          on conflict (league_id, player_id) do nothing
+          returning id, league_id, player_id, cash, joined_at
+        ),
+        -- Görev olayı (FR-07) üyelikle aynı cümlede yazılır: üyelik oluşmadıysa olay da oluşmaz.
+        event as (
+          insert into outbox_events (tenant_id, player_id, type)
+          select ${tenantId}::uuid, created.player_id, 'league_joined' from created
+        )
+        select * from created
+      `);
+      const row = result.rows[0];
+      if (!row) return null;
+      return {
+        id: row.id,
+        leagueId: row.league_id,
+        playerId: row.player_id,
+        cash: row.cash,
+        joinedAt: new Date(row.joined_at),
+      };
+    });
   }
 
   private visibleTo(tenantId: string): SQL | undefined {
@@ -121,6 +132,8 @@ export class DrizzleLeagueRepository implements LeagueRepository {
         startingCash: leagues.startingCash,
         assetIds: leagues.assetIds,
         closingPrices: leagues.closingPrices,
+        maxMembers: leagues.maxMembers,
+        lateJoinAllowed: leagues.lateJoinAllowed,
         // Düz SQL: Drizzle, sql içindeki leagues.id referansını tablo adı olmadan yazar, alt sorguda "id"
         // memberships tablosuna bağlanırdı (entegrasyon testi bunu yakaladı).
         memberCount: sql<number>`(select count(*) from memberships m where m.league_id = leagues.id)::int`,

@@ -8,6 +8,7 @@ import {
 } from '@lig/shared';
 import { AppError, unauthenticated } from '../common/app-error';
 import { CLOCK_MS, type MsClock } from '../common/clock';
+import { AUDIT_LOG, type AuditActor, type AuditLog } from '../audit/audit-log';
 import { RATE_LIMITER, type RateLimiter } from '../auth/ports';
 import { SECRET_CIPHER, type SecretCipher, secretContext } from '../secrets/secret-cipher';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './password-hasher';
@@ -79,6 +80,7 @@ export class AdminAuthService {
     @Inject(RATE_LIMITER) private readonly limiter: RateLimiter,
     @Inject(SECRET_CIPHER) private readonly cipher: SecretCipher,
     @Inject(CLOCK_MS) private readonly clock: MsClock,
+    @Inject(AUDIT_LOG) private readonly audit: AuditLog,
   ) {}
 
   /** 1. adım: e-posta ve parola. Hesap yoksa, parola yanlışsa aynı cevap ve benzer süre. */
@@ -92,7 +94,20 @@ export class AdminAuthService {
       throw invalidCredentials();
     }
     const check = await verifyPassword(admin.passwordHash, input.password);
-    if (!check.valid) throw invalidCredentials();
+    if (!check.valid) {
+      // Kayıtlı hesaba yanlış parola denemesi. Bilinmeyen e-postalar kaydedilmez: kaydı hangi platformun
+      // zincirine yazacağımız belli değil ve deneme sınırıyla zaten sınırlı.
+      await this.audit.append({
+        tenantId: admin.tenantId,
+        action: 'admin.login.failed',
+        actor: { type: 'anonymous' },
+        target: adminTarget(admin),
+        ip: clientIp,
+        metadata: { reason: 'password' },
+        occurredAt: new Date(this.clock()),
+      });
+      throw invalidCredentials();
+    }
     if (check.needsRehash) await this.admins.updatePasswordHash(admin.id, await hashPassword(input.password));
 
     const mfaEnrolled = admin.mfaSecretCiphertext !== null;
@@ -141,7 +156,7 @@ export class AdminAuthService {
   }
 
   /** 2b. adım: 6 haneli kod. Doğruysa giriş adımı silinir ve yeni, ayrı bir oturum açılır. */
-  async verifyMfa(preAuthToken: string | undefined, code: string): Promise<CompletedLogin> {
+  async verifyMfa(preAuthToken: string | undefined, code: string, clientIp: string): Promise<CompletedLogin> {
     const { token, data } = await this.requirePreAuth(preAuthToken);
     await this.limit(`rl:admin-mfa:${data.adminId}`, ADMIN_RATE_LIMITS.mfaPerAdmin);
     const perAttempt = await this.limiter.hit(
@@ -160,16 +175,57 @@ export class AdminAuthService {
     const accepted = data.mfaEnrolled
       ? await this.verifyEnrolled(admin, code)
       : await this.confirmEnrollment(admin, data, code);
-    if (!accepted) throw invalidMfaCode();
+    if (!accepted) {
+      // Parolayı bilen biri yanlış kod girdi: hesabın parolası sızmış olabilir, önemli sinyal.
+      await this.audit.append({
+        tenantId: admin.tenantId,
+        action: 'admin.mfa.failed',
+        actor: { type: 'anonymous' },
+        target: adminTarget(admin),
+        ip: clientIp,
+        metadata: { stage: data.mfaEnrolled ? 'verify' : 'setup' },
+        occurredAt: new Date(this.clock()),
+      });
+      throw invalidMfaCode();
+    }
 
     await this.preAuths.destroy(token);
-    const now = this.clock();
-    const sessionToken = await this.sessions.create(
-      { adminId: admin.id, tenantId: admin.tenantId, createdAtMs: now },
+    const now = new Date(this.clock());
+    const actor = adminActor(admin);
+    if (!data.mfaEnrolled) {
+      await this.audit.append({
+        tenantId: admin.tenantId,
+        action: 'admin.mfa.enrolled',
+        actor,
+        target: adminTarget(admin),
+        ip: clientIp,
+        occurredAt: now,
+      });
+    }
+    const sessionToken = await this.issueSession(admin);
+    await this.admins.recordLogin(admin.id, now);
+    await this.audit.append({
+      tenantId: admin.tenantId,
+      action: 'admin.login.succeeded',
+      actor,
+      target: adminTarget(admin),
+      ip: clientIp,
+      occurredAt: now,
+    });
+    return { sessionToken, me: await this.me(admin) };
+  }
+
+  /** Yöneticinin güncel oturum sürümüyle yeni bir oturum açar. */
+  async issueSession(admin: Pick<AdminAccount, 'id' | 'tenantId' | 'sessionVersion'>): Promise<string> {
+    return this.sessions.create(
+      {
+        adminId: admin.id,
+        tenantId: admin.tenantId,
+        sessionVersion: admin.sessionVersion,
+        createdAtMs: this.clock(),
+      },
       ADMIN_SESSION_IDLE_SECONDS,
     );
-    await this.admins.recordLogin(admin.id, new Date(now));
-    return { sessionToken, me: await this.me(admin) };
   }
 
   async me(admin: AdminAccount): Promise<AdminMeResponse> {
@@ -178,8 +234,16 @@ export class AdminAuthService {
     return { admin: { id: admin.id, email: admin.email, role: admin.role }, tenant: { name: tenantName } };
   }
 
-  async logout(sessionToken: string): Promise<void> {
+  async logout(admin: AdminAccount, sessionToken: string, clientIp: string): Promise<void> {
     await this.sessions.destroy(sessionToken);
+    await this.audit.append({
+      tenantId: admin.tenantId,
+      action: 'admin.logout',
+      actor: adminActor(admin),
+      target: adminTarget(admin),
+      ip: clientIp,
+      occurredAt: new Date(this.clock()),
+    });
   }
 
   private async verifyEnrolled(admin: AdminAccount, code: string): Promise<boolean> {
@@ -223,4 +287,12 @@ export class AdminAuthService {
     const result = await this.limiter.hit(key, policy.limit, policy.windowSeconds);
     if (!result.allowed) throw rateLimited(result.retryAfterSeconds);
   }
+}
+
+export function adminActor(admin: Pick<AdminAccount, 'id' | 'email'>): AuditActor {
+  return { type: 'admin', adminId: admin.id, email: admin.email };
+}
+
+export function adminTarget(admin: Pick<AdminAccount, 'id' | 'email'>) {
+  return { type: 'admin', id: admin.id, label: admin.email };
 }

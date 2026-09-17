@@ -126,3 +126,48 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 
 - **Çoklu hesap:** Şimdilik kabul. Ödül yalnızca XP olduğu için kazanç düşük. Kimlik platformda; pilotta platformdan "kimliği doğrulanmış hesap" bilgisi istenir ve ödül buna bağlanabilir (Faz 3.5).
 - **Son dakikada her şeyi tek varlığa basma:** Kabul, ek kural yok. Gerçek piyasadaki riskin aynısı, eğitsel açıdan sorun değil. Platform isterse ileride lig ayarı olarak varlık başına üst sınır eklenebilir (FR-20).
+
+## K-019 · Denetim kaydı: yalnızca eklenebilir tablo ve özet zinciri
+
+- **Bağlam:** NFR-07 değiştirilemez denetim kaydı istiyor. Lig ayarlarını, ekip değişikliklerini ve girişleri kimin yaptığı inkâr edilememeli (T7).
+- **Karar:** PostgreSQL'de `audit_events` tablosu, iki koruma katmanıyla:
+  1. **Tetikleyici:** `UPDATE`, `DELETE` ve `TRUNCATE` veritabanı seviyesinde reddedilir. Uygulamada bir hata olsa bile kayıt değişmez.
+  2. **Özet zinciri:** Her kayıt, kendi zincirindeki (platform başına bir zincir, platforma bağlı olmayan olaylar için `system`) bir önceki kaydın SHA-256 özetini taşır. Tetikleyiciyi kapatabilen biri (veritabanı sahibi) bir kaydı değiştirir, siler ya da araya kayıt eklerse `npm run audit:verify` ve paneldeki "Zinciri doğrula" ilk bozuk kaydı gösterir.
+- **Aynı transaction:** Ekip değişikliği ile kaydı aynı transaction'da yazılır; biri olmadan diğeri olmaz. Zincir başına danışma kilidi (`pg_advisory_xact_lock`) aynı anda yazılan iki kaydın aynı "önceki özet"i almasını engeller.
+- **Yabancı anahtar yok:** Yönetici ya da platform silinse de kayıt kalır. İşlemi yapanın e-postası kayıt anındaki haliyle saklanır.
+- **Kayda girmeyenler:** parola, token, TOTP kodu ve secret. Bilinmeyen e-postayla giriş denemeleri (hangi platformun zincirine yazılacağı belli değil; deneme sınırıyla ve uygulama loguyla izleniyor).
+- **Bilinen sınır:** Zincirin **sonundan** silinen kayıtlar zincirden anlaşılamaz. Doğrulama son özeti gösterir; bu değer dışarıda saklanıp sonra karşılaştırılırsa anlaşılır. Faz 4: son özetin düzenli olarak dış bir yere yazılması ve uygulamanın tablonun sahibi olmayan, yalnızca `INSERT`/`SELECT` yetkili bir veritabanı rolüyle çalışması.
+
+## K-020 · Ekip yönetimi
+
+- **Roller:** Sahip (ekip, denetim kaydı ve her şey), düzenleyici (lig, görev ve marka ayarları; sonraki adımlarda), izleyici (yalnızca görüntüleme). Ekip ve denetim kaydı uçları yalnızca sahibe açık.
+- **Davet:** E-posta altyapısı olmadığı için sahip davet linkini ekranda bir kez görür ve kendisi iletir. Link tek kullanımlık ve 72 saat geçerli; token veritabanında SHA-256 özetiyle saklanır ve adresin `#` sonrasında durur (sunucuya ve loglara gitmez). Aynı e-postaya yeni davet eskisini geçersiz kılar. Kabul sırasında davet satırı kilitlenir: aynı link aynı anda iki kez kullanılamaz. E-posta başka platformda yöneticiyse kabul reddedilir, davet geçerli kalır. E-postayla gönderim pilotta eklenir.
+- **Sahip her zaman kalır:** Rol değiştirme, kaldırma ve MFA sıfırlama tenant satırını kilitler ve işlemi yapanın hâlâ sahip olduğunu kilitten sonra tekrar okur. İki sahip aynı anda birbirini düşürmeye çalışırsa yalnızca biri başarılı olur.
+- **Kendi hesabında yapılamayanlar:** rol değiştirme, kaldırma, MFA sıfırlama. Oturumu ele geçirilmiş bir sahip MFA'yı kendi telefonuna taşıyamaz, platformu sahipsiz bırakamaz.
+- **Oturum sürümü:** `admin_users.session_version` her oturumda saklanır ve her istekte karşılaştırılır. Parola değişimi, "diğer oturumları kapat" ve MFA sıfırlama sürümü artırır; o yöneticinin bütün açık oturumları bir sonraki istekte düşer. İşlemi yapan tarayıcıya yeni sürümle yeni oturum verilir.
+- **CORS:** Panel `PATCH` ve `DELETE` kullandığı için bu yöntemler yalnızca web adresine açıldı.
+
+## K-021 · Lig yönetimi: evreye göre düzenleme, katılım koşulu
+
+- **Kaynak:** Tasarım dosyasındaki FR-20 kabul kriterleri: başlangıç bitişten önce, varlıklar yalnızca platformun kendi varlıkları, başlamış ligin başlangıç bakiyesi değişmez.
+- **Evreye göre kural** (`leagueEditability`, `@lig/shared`; API karar verir, panel alanları buna göre kapatır):
+  - **Taslak:** her şey değişir, silinebilir.
+  - **Başlamamış:** her şey değişir. Başlangıç bakiyesi, taslağa geri alma ve silme yalnızca henüz kimse katılmadıysa. Aksi halde farklı bakiyeyle başlamış oyuncular olurdu.
+  - **Süren:** ad, bitiş, varlık ekleme, kontenjan ve geç katılım. Başlangıç, bakiye, tip ve varlık çıkarma kilitli. Çıkarılan varlığı elinde tutan oyuncunun değerlemesi bozulurdu.
+  - **Biten ya da kapanmış:** hiçbir şey değişmez.
+- **Tarih sınırları:** Lig 1 saat ile 400 gün arası sürer. Başlangıç geçmişe çekilemez (5 dk saat farkı toleransı). Bitiş en az 5 dk sonrası olmalı; yönetici bitişi geçmişe çekip süren ligi anında kapatamaz.
+- **Katılım koşulu:** Tasarım dosyası tanımlamıyordu. İki koşul uygulandı: **kontenjan** (en fazla N oyuncu) ve **geç katılım** (lig başladıktan sonra katılım açık ya da kapalı). "Yalnızca kimliği doğrulanmış hesaplar" koşulu platform token'ında bu bilgiyi gerektirdiği için pilota bırakıldı (K-018).
+- **Yarışlar:**
+  - **Kontenjan:** Katılım lig başına danışma kilidiyle sıraya girer. Kilit olmadan 30 eşzamanlı katılımda 10 kişilik kontenjan 20-22'ye çıkıyordu; test bunu yakalıyor.
+  - **Düzenleme ve katılım:** Düzenleme ligi `FOR UPDATE` ile kilitler ve üye sayısını kilitten sonra ayrı sorguyla sayar. Katılım lig satırını `FOR SHARE` ile okur. Bu olmadan, bakiye değişirken katılan oyuncu eski bakiyeyi alabiliyordu; test bunu da yakalıyor. Emirler (`FOR SHARE`) ve lig kapanışı (`FOR UPDATE`) aynı kilit sırasını kullandığı için kilitlenme olmaz.
+- **Denetim:** Oluşturma, düzenleme (her alan için eski ve yeni değer) ve silme, değişiklikle aynı transaction'da kayda girer (NFR-07).
+- **Ödül alanı yok:** Lig formunda ve API'de ödül alanı bulunmaz; fazladan alan 400 ile reddedilir (FR-24).
+
+## K-022 · Uyum ayarları: kilitli olanlar kodda, ayarlanabilir olanlar tenant'ta
+
+- **Kilitli (kodda sabit, yazma ucu yok):** kişiye özel al/sat önerisi kapalı, nakit ya da nakde çevrilebilir ödül kapalı, portföyü etkileyen joker ve XP ile tahmin kapalı, oyuncu ekranında "sanal para, yatırım tavsiyesi değildir" uyarısı açık. Panel bunları gösterir; API'de değiştirecek bir alan yoktur (`complianceUpdateRequest` katı şema).
+- **Neden veritabanında "kilitli" bayrağı değil:** Veritabanına yazabilen biri bayrağı çevirebilirdi. Kural kodda olunca değiştirmek kod incelemesinden ve CI'dan geçmeyi gerektirir.
+- **Platform sahibinin seçimi (denetim kaydına girer):**
+  - "Gerçek hesabıma geç" butonu: kapalıyken oyuncuya platform adresi hiç gönderilmez.
+  - "Gerçek işlem yap" görevi: kapalıyken görev listelenmez, ilerlemez, XP vermez. Hukuki değerlendirme gelene kadar platform kapatabilsin diye.
+- **Uygulama:** Ayarlar sunucuda uygulanır (`findPublicInfo`, `questStore.listActive`); arayüzde gizlemek yeterli sayılmaz.

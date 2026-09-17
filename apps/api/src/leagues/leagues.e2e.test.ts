@@ -253,6 +253,35 @@ describe('POST /leagues/:id/join (FR-03)', () => {
   });
 });
 
+describe('join conditions (FR-20)', () => {
+  it('refuses a full league with LEAGUE_FULL and shows it cannot be joined', async () => {
+    const full = repo.addLeague({ tenantId: TENANT_A, name: 'Dolu', maxMembers: 2 });
+    for (let i = 0; i < 2; i++) {
+      await repo.createMembership(TENANT_A, full.id, repo.addPlayer(TENANT_A), NOW);
+    }
+    const res = await join(full.id);
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'LEAGUE_FULL' });
+    const detail = await app.inject({ method: 'GET', url: `/leagues/${full.id}`, cookies: cookieA });
+    expect(detail.json().league).toMatchObject({ canJoin: false, maxMembers: 2, memberCount: 2 });
+  });
+
+  it('refuses joining a running league that closed late joins, but allows it before start', async () => {
+    const { id: _runningId, ...runningFields } = running;
+    const closedLate = repo.addLeague({ ...runningFields, name: 'Geç katılım yok', lateJoinAllowed: false });
+    const res = await join(closedLate.id);
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({
+      code: 'LEAGUE_NOT_ACTIVE',
+      message: expect.stringContaining('başladı'),
+    });
+
+    const { id: _upcomingId, ...upcomingFields } = upcoming;
+    const beforeStart = repo.addLeague({ ...upcomingFields, name: 'Önceden', lateJoinAllowed: false });
+    expect((await join(beforeStart.id)).statusCode).toBe(201);
+  });
+});
+
 describe('rate limiting (T9)', () => {
   it('limits joins per player, not per IP', async () => {
     for (let i = 0; i < RATE_LIMITS.join.limit; i++) await join(running.id);

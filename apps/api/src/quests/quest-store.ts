@@ -1,6 +1,6 @@
 import { type QuestPeriod, type QuestTemplate, type QuestWindow } from '@lig/shared';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { questProgress, quests } from '../db/schema';
+import { and, eq, inArray, ne, or, sql } from 'drizzle-orm';
+import { questProgress, quests, tenants } from '../db/schema';
 import { type DbExecutor } from '../xp/xp-ledger';
 
 export interface QuestRecord {
@@ -30,7 +30,16 @@ export const questStore = {
         xpReward: quests.xpReward,
       })
       .from(quests)
-      .where(and(eq(quests.tenantId, tenantId), eq(quests.active, true)))
+      .innerJoin(tenants, eq(tenants.id, quests.tenantId))
+      .where(
+        and(
+          eq(quests.tenantId, tenantId),
+          eq(quests.active, true),
+          // Uyum ayarı (FR-24): platform "gerçek işlem yap" görevini kapattıysa görev listelenmez, ilerlemez,
+          // XP vermez. Açılınca dönem içindeki gerçek işlemler yine sayılır.
+          or(ne(quests.template, 'real_trade'), eq(tenants.realTradeQuestEnabled, true)),
+        ),
+      )
       .orderBy(quests.createdAt, quests.id);
     // Şablon ve dönem veritabanında CHECK kısıtıyla sınırlı; tip daraltma güvenli.
     return rows as QuestRecord[];

@@ -8,6 +8,7 @@
  */
 import {
   ADMIN_ROLES,
+  AUDIT_ACTOR_TYPES,
   ASSET_CLASSES,
   LEAGUE_STATUSES,
   LEAGUE_TYPES,
@@ -32,6 +33,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -74,6 +76,10 @@ export const tenants = pgTable('tenants', {
   webhookSecretCiphertext: text(),
   /** "Gerçek hesabıma geç" (FR-08) butonunun açtığı platform adresi. Yalnızca http(s). */
   realTradeUrl: text(),
+  /** Uyum ayarı (FR-24): platform butonu kapatabilir. Kapalıyken oyuncuya adres hiç gönderilmez. */
+  realTradeButtonEnabled: boolean().notNull().default(true),
+  /** Uyum ayarı (FR-24): "gerçek işlem yap" görevi. Kapalıyken görev listelenmez, ilerlemez, XP vermez. */
+  realTradeQuestEnabled: boolean().notNull().default(true),
   dataResidency: text().notNull().default('any'),
   createdAt: createdAt(),
 });
@@ -98,6 +104,11 @@ export const adminUsers = pgTable(
     mfaEnabledAt: timestamp({ withTimezone: true }),
     /** Son kabul edilen TOTP zaman adımı. Aynı kod ikinci kez kullanılamaz. */
     mfaLastUsedStep: bigint({ mode: 'number' }),
+    /**
+     * Oturum sürümü. Artırılınca bu yöneticinin bütün açık oturumları bir sonraki istekte düşer
+     * (parola değişimi, "diğer oturumları kapat", MFA sıfırlama).
+     */
+    sessionVersion: integer().notNull().default(0),
     lastLoginAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
   },
@@ -145,10 +156,16 @@ export const leagues = pgTable(
      * bu fiyatlarla gösterilir; final sıralamasıyla birebir aynı değer çıkar ve fiyatlar oynasa da değişmez.
      */
     closingPrices: jsonb().$type<Record<string, string | null>>(),
+    /** Katılım koşulu (FR-20): kontenjan. Null ise sınırsız. */
+    maxMembers: integer(),
+    /** Katılım koşulu (FR-20): lig başladıktan sonra katılım. */
+    lateJoinAllowed: boolean().notNull().default(true),
     createdAt: createdAt(),
+    updatedAt: timestamp({ withTimezone: true }),
   },
   (t) => [
     index().on(t.tenantId, t.status),
+    check('leagues_max_members_positive', sql`${t.maxMembers} is null or ${t.maxMembers} > 0`),
     check('leagues_ends_after_starts', sql`${t.endsAt} > ${t.startsAt}`),
     check('leagues_starting_cash_positive', sql`${t.startingCash} > 0`),
   ],
@@ -352,5 +369,68 @@ export const xpLedger = pgTable(
     unique().on(t.playerId, t.reason, t.sourceId),
     index().on(t.playerId, t.createdAt),
     check('xp_ledger_amount_positive', sql`${t.amount} > 0`),
+  ],
+);
+
+/**
+ * Yönetici davetleri. Token'ın kendisi değil SHA-256 özeti saklanır; link yalnızca oluşturulduğu anda
+ * gösterilir. Aynı platformda aynı e-postaya bekleyen tek davet olur.
+ */
+export const adminInvites = pgTable(
+  'admin_invites',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    email: text().notNull(),
+    role: adminRole().notNull(),
+    tokenHash: text().notNull().unique(),
+    invitedByAdminId: uuid().references(() => adminUsers.id, { onDelete: 'set null' }),
+    acceptedAdminId: uuid().references(() => adminUsers.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    acceptedAt: timestamp({ withTimezone: true }),
+    revokedAt: timestamp({ withTimezone: true }),
+  },
+  (t) => [
+    check('admin_invites_email_lowercase', sql`${t.email} = lower(${t.email})`),
+    uniqueIndex('admin_invites_one_pending_per_email')
+      .on(t.tenantId, t.email)
+      .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+  ],
+);
+
+/**
+ * Değiştirilemez denetim kaydı (NFR-07, K-019). Güncelleme, silme ve TRUNCATE veritabanı tetikleyicisiyle
+ * engellenir (migration 0007). Her kayıt kendi zincirindeki (platform başına bir zincir) bir önceki kaydın
+ * özetini taşır; araya eklenen, değiştirilen ya da silinen kayıt `audit:verify` ile bulunur.
+ * Yönetici ve tenant'a yabancı anahtar yok: yönetici ya da platform silinse de kayıt kalır.
+ */
+export const auditEvents = pgTable(
+  'audit_events',
+  {
+    seq: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    /** Tenant kimliği ya da platforma bağlı olmayan olaylar için `system`. */
+    chainKey: text().notNull(),
+    tenantId: uuid(),
+    occurredAt: timestamp({ withTimezone: true }).notNull(),
+    action: text().notNull(),
+    actorType: text().notNull(),
+    actorAdminId: uuid(),
+    /** İşlem anındaki e-posta. Yönetici sonradan silinse de kayıt okunur kalır. */
+    actorEmail: text(),
+    targetType: text(),
+    targetId: text(),
+    targetLabel: text(),
+    ip: text(),
+    /** Yalnızca düz değerler; parola, token, secret asla yazılmaz. */
+    metadata: jsonb().notNull().default({}),
+    prevHash: text(),
+    hash: text().notNull().unique(),
+  },
+  (t) => [
+    check('audit_events_actor_type', sql`${t.actorType} in (${inList(AUDIT_ACTOR_TYPES)})`),
+    index().on(t.chainKey, t.seq),
   ],
 );

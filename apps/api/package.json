@@ -18,7 +18,8 @@
     "secrets:new-key": "tsx src/secrets/generate-key.ts",
     "secrets:rotate": "tsx src/secrets/rotate.ts",
     "admin:create": "tsx src/admin-auth/admin-cli.ts create",
-    "admin:reset-mfa": "tsx src/admin-auth/admin-cli.ts reset-mfa"
+    "admin:reset-mfa": "tsx src/admin-auth/admin-cli.ts reset-mfa",
+    "audit:verify": "tsx src/audit/verify-cli.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

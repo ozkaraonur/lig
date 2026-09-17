@@ -4,6 +4,7 @@ import { type AdminPreAuthData, type AdminSessionData } from './ports';
 export const adminSessionData: z.ZodType<AdminSessionData> = z.object({
   adminId: z.uuid(),
   tenantId: z.uuid(),
+  sessionVersion: z.number().int().min(0),
   createdAtMs: z.number().int(),
 });
 

@@ -29,7 +29,8 @@
     "secrets:new-key": "npm run secrets:new-key -w @lig/api --",
     "secrets:rotate": "npm run secrets:rotate -w @lig/api --",
     "admin:create": "npm run admin:create -w @lig/api --",
-    "admin:reset-mfa": "npm run admin:reset-mfa -w @lig/api --"
+    "admin:reset-mfa": "npm run admin:reset-mfa -w @lig/api --",
+    "audit:verify": "npm run audit:verify -w @lig/api"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

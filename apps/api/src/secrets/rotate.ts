@@ -8,6 +8,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { loadEnv } from '../config/env';
 import * as schema from '../db/schema';
+import { appendAudit } from '../audit/audit-log';
 import { rotateStoredSecrets } from './rotate-secrets';
 import { createSecretCipher } from './secrets.module';
 
@@ -17,6 +18,17 @@ async function main(): Promise<void> {
   try {
     const db = drizzle({ client: pool, schema, casing: 'snake_case' });
     const result = await rotateStoredSecrets(db, createSecretCipher(env));
+    await appendAudit(db, {
+      tenantId: null,
+      action: 'secrets.rotated',
+      actor: { type: 'cli' },
+      metadata: {
+        tenantWebhookSecrets: result.tenantWebhookSecrets,
+        adminMfaSecrets: result.adminMfaSecrets,
+        unreadable: result.unreadable.length,
+      },
+      occurredAt: new Date(),
+    });
     console.warn(
       `Yeniden şifrelendi: ${result.tenantWebhookSecrets} webhook anahtarı, ${result.adminMfaSecrets} MFA secret'ı.`,
     );
