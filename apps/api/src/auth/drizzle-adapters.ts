@@ -2,7 +2,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DB, type Database } from '../db/db.module';
 import { players, tenants } from '../db/schema';
-import { type PlayerRecord, type PlayerRepository, type TenantDirectory, type TenantKey } from './ports';
+import {
+  type PlayerRecord,
+  type PlayerRepository,
+  type TenantDirectory,
+  type TenantKey,
+  type TenantPublicInfo,
+} from './ports';
 
 @Injectable()
 export class DrizzleTenantDirectory implements TenantDirectory {
@@ -17,6 +23,30 @@ export class DrizzleTenantDirectory implements TenantDirectory {
     if (!row?.issuer || !row.publicKeyPem) return null;
     return { tenantId: row.id, issuer: row.issuer, publicKeyPem: row.publicKeyPem };
   }
+
+  async findPublicInfo(tenantId: string): Promise<TenantPublicInfo | null> {
+    const [row] = await this.db
+      .select({ name: tenants.name, realTradeUrl: tenants.realTradeUrl })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    if (!row) return null;
+    return { name: row.name, realTradeUrl: safeHttpUrl(row.realTradeUrl) };
+  }
+}
+
+/**
+ * Yalnızca http(s) adresleri istemciye verilir. Adres ileride yönetici panelinden girilecek (FR-22);
+ * "javascript:" gibi bir değer butona konursa tıklayan oyuncunun oturumunda kod çalışırdı (XSS).
+ */
+export function safeHttpUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 @Injectable()
@@ -28,7 +58,12 @@ export class DrizzlePlayerRepository implements PlayerRepository {
       .insert(players)
       .values({ tenantId, externalId, displayName })
       .onConflictDoUpdate({ target: [players.tenantId, players.externalId], set: { displayName } })
-      .returning({ id: players.id, tenantId: players.tenantId, displayName: players.displayName });
+      .returning({
+        id: players.id,
+        tenantId: players.tenantId,
+        displayName: players.displayName,
+        xp: players.xp,
+      });
     if (!row) throw new Error('Player upsert returned no row');
     return row;
   }
@@ -36,7 +71,12 @@ export class DrizzlePlayerRepository implements PlayerRepository {
   /** Oyuncu her zaman tenant ile birlikte aranır: başka platformun oyuncusu asla dönmez (T4). */
   async findById(tenantId: string, playerId: string): Promise<PlayerRecord | null> {
     const [row] = await this.db
-      .select({ id: players.id, tenantId: players.tenantId, displayName: players.displayName })
+      .select({
+        id: players.id,
+        tenantId: players.tenantId,
+        displayName: players.displayName,
+        xp: players.xp,
+      })
       .from(players)
       .where(and(eq(players.id, playerId), eq(players.tenantId, tenantId)))
       .limit(1);

@@ -24,6 +24,7 @@ export class InMemoryLeagueRepository implements LeagueRepository {
   readonly assets: Array<AssetRecord & { tenantId: string }> = [];
   readonly memberships: MembershipRecord[] = [];
   readonly players = new Map<string, string>();
+  readonly events: Array<{ tenantId: string; playerId: string; type: 'league_joined' }> = [];
 
   addPlayer(tenantId: string, playerId = randomUUID()): string {
     this.players.set(playerId, tenantId);
@@ -90,6 +91,7 @@ export class InMemoryLeagueRepository implements LeagueRepository {
 
     const membership = { id: randomUUID(), leagueId, playerId, cash: league.startingCash, joinedAt: now };
     this.memberships.push(membership);
+    this.events.push({ tenantId, playerId, type: 'league_joined' });
     return membership;
   }
 

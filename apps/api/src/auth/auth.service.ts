@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type PublicPlayer } from '@lig/shared';
+import { type MeResponse, type PublicPlayer } from '@lig/shared';
 import { AppError, unauthenticated } from '../common/app-error';
 import { PlayerTokenVerifier } from './player-token.verifier';
 import {
@@ -12,6 +12,9 @@ import {
   SESSION_STORE,
   type SessionData,
   type SessionStore,
+  TENANT_DIRECTORY,
+  type TenantDirectory,
+  type PlayerRecord,
 } from './ports';
 
 /** Oturum süresi. Süre dolunca oyuncu platform uygulamasından yeniden açar. */
@@ -34,6 +37,7 @@ export class AuthService {
     @Inject(SESSION_STORE) private readonly sessions: SessionStore,
     @Inject(RATE_LIMITER) private readonly rateLimiter: RateLimiter,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(TENANT_DIRECTORY) private readonly tenants: TenantDirectory,
   ) {}
 
   async createSession(playerToken: string, clientIp: string): Promise<CreatedSession> {
@@ -59,17 +63,24 @@ export class AuthService {
     return {
       sessionToken,
       ttlSeconds: SESSION_TTL_SECONDS,
-      player: { id: player.id, displayName: player.displayName },
+      player: toPublicPlayer(player),
     };
   }
 
-  async getPlayer(session: SessionData): Promise<PublicPlayer> {
-    const player = await this.playerRepository.findById(session.tenantId, session.playerId);
-    if (!player) throw unauthenticated();
-    return { id: player.id, displayName: player.displayName };
+  async me(session: SessionData): Promise<MeResponse> {
+    const [player, platform] = await Promise.all([
+      this.playerRepository.findById(session.tenantId, session.playerId),
+      this.tenants.findPublicInfo(session.tenantId),
+    ]);
+    if (!player || !platform) throw unauthenticated();
+    return { player: toPublicPlayer(player), platform };
   }
 
   async logout(sessionToken: string): Promise<void> {
     await this.sessions.destroy(sessionToken);
   }
+}
+
+function toPublicPlayer(player: PlayerRecord): PublicPlayer {
+  return { id: player.id, displayName: player.displayName, xp: player.xp };
 }

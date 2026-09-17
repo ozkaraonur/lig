@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { DB, type Database } from '../db/db.module';
+import { type OutboxEvent, recordOutboxEvent } from '../outbox/outbox';
 import { assets, memberships, positions, virtualOrders } from '../db/schema';
 import {
   type LockedMembership,
@@ -120,6 +121,10 @@ class DrizzleOrderTransaction implements OrderTransaction {
         target: [positions.membershipId, positions.assetId],
         set: { quantity: position.quantity, avgCost: position.avgCost },
       });
+  }
+
+  recordEvent(event: OutboxEvent): Promise<void> {
+    return recordOutboxEvent(this.tx, event);
   }
 
   async insertOrder(order: NewOrder): Promise<OrderRecord> {

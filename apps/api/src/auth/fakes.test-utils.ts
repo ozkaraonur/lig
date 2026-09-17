@@ -22,6 +22,11 @@ export class InMemoryTenantDirectory implements TenantDirectory {
   async findByIssuer(issuer: string): Promise<TenantKey | null> {
     return this.tenants.find((t) => t.issuer === issuer) ?? null;
   }
+  async findPublicInfo(tenantId: string) {
+    return this.tenants.some((t) => t.tenantId === tenantId)
+      ? { name: 'Test Platform', realTradeUrl: 'https://platform.test/trade' }
+      : null;
+  }
 }
 
 export class InMemoryReplayStore implements ReplayStore {
@@ -63,14 +68,20 @@ export class InMemoryPlayerRepository implements PlayerRepository {
     const existing = [...this.players.values()].find(
       (p) => p.tenantId === tenantId && p.externalId === externalId,
     );
-    const record = { id: existing?.id ?? randomUUID(), tenantId, externalId, displayName };
+    const record = {
+      id: existing?.id ?? randomUUID(),
+      tenantId,
+      externalId,
+      displayName,
+      xp: existing?.xp ?? 0,
+    };
     this.players.set(record.id, record);
-    return { id: record.id, tenantId, displayName };
+    return { id: record.id, tenantId, displayName, xp: record.xp };
   }
   async findById(tenantId: string, playerId: string): Promise<PlayerRecord | null> {
     const p = this.players.get(playerId);
     return p && p.tenantId === tenantId
-      ? { id: p.id, tenantId: p.tenantId, displayName: p.displayName }
+      ? { id: p.id, tenantId: p.tenantId, displayName: p.displayName, xp: p.xp }
       : null;
   }
 }

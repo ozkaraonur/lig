@@ -116,6 +116,7 @@ export class OrdersService {
         idempotencyKey: req.idempotencyKey,
         requestHash,
       });
+      await tx.recordEvent({ tenantId: session.tenantId, playerId: session.playerId, type: 'order_placed' });
 
       return {
         replayed: false,

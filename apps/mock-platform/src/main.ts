@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { loadOrCreateKeys } from './keys.js';
 import { PriceSimulator } from './prices.js';
 import { buildServer } from './server.js';
+import { DEV_WEBHOOK_SECRET, WebhookSender } from './webhooks.js';
 
 const rootEnv = fileURLToPath(new URL('../../../.env', import.meta.url));
 if (process.env.NODE_ENV !== 'production' && existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -15,7 +16,13 @@ const webUrl = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
 
 const keys = loadOrCreateKeys(fileURLToPath(new URL('../keys/', import.meta.url)));
 const prices = new PriceSimulator();
-const app = await buildServer({ keys, issuer, webUrl, prices, logger: true });
+const ligApiUrl = process.env.LIG_API_URL ?? 'http://127.0.0.1:4000';
+const webhookSecret = process.env.MOCK_PLATFORM_WEBHOOK_SECRET ?? DEV_WEBHOOK_SECRET;
+if (process.env.NODE_ENV === 'production' && webhookSecret === DEV_WEBHOOK_SECRET) {
+  throw new Error('MOCK_PLATFORM_WEBHOOK_SECRET must be set in production');
+}
+const webhooks = new WebhookSender({ url: `${ligApiUrl}/webhooks/platform`, issuer, secret: webhookSecret });
+const app = await buildServer({ keys, issuer, webUrl, prices, webhooks, logger: true });
 
 // Fiyatlar saniyede bir hareket eder.
 const ticker = setInterval(() => prices.tick(), 1000);

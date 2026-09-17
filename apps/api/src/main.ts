@@ -10,6 +10,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ trustProxy: false, bodyLimit: 64 * 1024 }),
+    // Webhook imzası ham gövde üzerinden doğrulanır (FR-31).
+    { rawBody: true },
   );
   const env = app.get<Env>(ENV);
 

@@ -43,6 +43,14 @@ const SEED_ASSETS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Varsayılan görevler (FR-07). Faz 2'de yönetici panelinden şablonlarla tanımlanacak (FR-21). */
+const SEED_QUESTS = [
+  { template: 'join_league', period: 'once', targetCount: 1, xpReward: 50 },
+  { template: 'place_orders', period: 'weekly', targetCount: 5, xpReward: 100 },
+  { template: 'trade_distinct_assets', period: 'weekly', targetCount: 3, xpReward: 150 },
+  { template: 'real_trade', period: 'weekly', targetCount: 1, xpReward: 250 },
+] as const;
+
 /** Tarihler çalıştırma anına göre: her seed sonrası süren, başlayacak ve biten birer lig olur. */
 function seedLeagues(now: number) {
   return [
@@ -83,12 +91,22 @@ async function main(): Promise<void> {
   const db = drizzle({ client: pool, schema, casing: 'snake_case' });
   try {
     const priceFeedUrl = `${mockUrl}/prices`;
+    const realTradeUrl = `${mockUrl}/trade`;
+    // Sahte platformla aynı değer olmalı (apps/mock-platform/src/webhooks.ts). Üretimde platform başına rastgele.
+    const webhookSecret = process.env.MOCK_PLATFORM_WEBHOOK_SECRET ?? 'dev-only-webhook-secret-change-me';
     const [tenant] = await db
       .insert(schema.tenants)
-      .values({ name: 'Sahte Platform', ssoIssuer: key.issuer, ssoPublicKey: key.publicKeyPem, priceFeedUrl })
+      .values({
+        name: 'Sahte Platform',
+        ssoIssuer: key.issuer,
+        ssoPublicKey: key.publicKeyPem,
+        priceFeedUrl,
+        realTradeUrl,
+        webhookSecret,
+      })
       .onConflictDoUpdate({
         target: schema.tenants.ssoIssuer,
-        set: { ssoPublicKey: key.publicKeyPem, priceFeedUrl },
+        set: { ssoPublicKey: key.publicKeyPem, priceFeedUrl, realTradeUrl, webhookSecret },
       })
       .returning({ id: schema.tenants.id, name: schema.tenants.name });
     if (!tenant) throw new Error('Tenant oluşturulamadı.');
@@ -122,6 +140,25 @@ async function main(): Promise<void> {
       created++;
     }
     console.warn(`Ligler hazır: ${created} yeni lig eklendi.`);
+
+    let questsCreated = 0;
+    for (const quest of SEED_QUESTS) {
+      const [existing] = await db
+        .select({ id: schema.quests.id })
+        .from(schema.quests)
+        .where(
+          and(
+            eq(schema.quests.tenantId, tenant.id),
+            eq(schema.quests.template, quest.template),
+            eq(schema.quests.period, quest.period),
+          ),
+        )
+        .limit(1);
+      if (existing) continue;
+      await db.insert(schema.quests).values({ ...quest, tenantId: tenant.id });
+      questsCreated++;
+    }
+    console.warn(`Görevler hazır: ${questsCreated} yeni görev eklendi.`);
   } finally {
     await pool.end();
   }

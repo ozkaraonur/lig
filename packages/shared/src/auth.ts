@@ -40,4 +40,17 @@ export type PlayerTokenClaims = z.infer<typeof playerTokenClaims>;
 export interface PublicPlayer {
   id: string;
   displayName: string;
+  /** Görevler ve lig ödülleriyle kazanılan toplam XP (FR-07, FR-32). */
+  xp: number;
+}
+
+export interface PublicPlatform {
+  name: string;
+  /** "Gerçek hesabıma geç" (FR-08). Tanımlı değilse buton gösterilmez. */
+  realTradeUrl: string | null;
+}
+
+export interface MeResponse {
+  player: PublicPlayer;
+  platform: PublicPlatform;
 }

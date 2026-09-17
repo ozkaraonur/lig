@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
 import { DB, type Database } from '../db/db.module';
 import { CASH_SCALE, formatFixed } from '../orders/fixed-point';
+import { type DbExecutor, grantXp } from '../xp/xp-ledger';
 import { assets, leagues, memberships, players, positions, xpLedger } from '../db/schema';
 import {
   type ClosingLeague,
@@ -14,7 +15,7 @@ import {
 } from './ports';
 import { type MemberHolding, type Standing, type XpGrant } from './standings';
 
-type Executor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
+type Executor = DbExecutor;
 
 async function loadHoldings(db: Executor, leagueId: string): Promise<MemberHolding[]> {
   const rows = await db
@@ -208,38 +209,8 @@ class DrizzleLeagueCloseTransaction implements LeagueCloseTransaction {
     `);
   }
 
-  async grantXp(all: XpGrant[]): Promise<number> {
-    let total = 0;
-    for (const grants of chunks(all)) total += await this.grantChunk(grants);
-    return total;
-  }
-
-  private async grantChunk(grants: XpGrant[]): Promise<number> {
-    const values = sql.join(
-      grants.map((g) => sql`(${g.playerId}::uuid, ${g.reason}::xp_reason, ${g.sourceId}, ${g.amount}::int)`),
-      sql`, `,
-    );
-    // Önce deftere yazılır; yalnızca gerçekten yeni eklenen satırların XP'si oyuncuya eklenir.
-    // Aynı oyuncunun birden fazla satırı olabilir: UPDATE ... FROM eşleşen satırlardan yalnızca birini
-    // uygular, bu yüzden önce oyuncu başına toplanır.
-    const result = await this.tx.execute<{ total: number | null }>(sql`
-      with inserted as (
-        insert into xp_ledger (player_id, reason, source_id, amount)
-        values ${values}
-        on conflict (player_id, reason, source_id) do nothing
-        returning player_id, amount
-      ),
-      per_player as (
-        select player_id, sum(amount)::int as amount from inserted group by player_id
-      ),
-      updated as (
-        update players p set xp = p.xp + pp.amount
-        from per_player pp where p.id = pp.player_id
-        returning pp.amount
-      )
-      select coalesce(sum(amount), 0)::int as total from updated
-    `);
-    return Number(result.rows[0]?.total ?? 0);
+  grantXp(grants: XpGrant[]): Promise<number> {
+    return grantXp(this.tx, grants);
   }
 
   async markClosed(

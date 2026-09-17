@@ -24,7 +24,7 @@
 | T2  | Tampering              | Eski fiyattan emir vererek kesin kazanç (fiyat arbitrajı)             | Fiyat yaşı ≤ 5 sn, fiyat istemciden alınmaz, sunucu tarafında okunur                                                                                                            | Faz 1 ✓                             |
 | T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition)   | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                        | Faz 1 ✓                             |
 | T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)            | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                            | Oyuncu lig uçları ✓, Faz 2–4        |
-| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                           | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                         | Faz 2                               |
+| T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                           | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                         | Faz 1 ✓                             |
 | T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                    | Güçlü parola hash'i (argon2id), zorunlu MFA, oturum süresi, giriş denemesi sınırı                                                                                               | Faz 2                               |
 | T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                  | Değiştirilemez denetim kaydı (NFR-07)                                                                                                                                           | Faz 2                               |
 | T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                  | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                                      | Faz 3                               |
@@ -139,3 +139,27 @@
 - **Çoklu hesap:** Aynı kişi platformda birden fazla hesapla katılıp birini "risk hesabı" olarak kullanabilir. Kimlik platformda olduğu için tespit de platform tarafında. Öneri: sözleşmede platformun oyuncu başına tek `sub` garanti etmesi; bizde tenant başına aynı cihaz/IP'den çok sayıda katılım için ileride uyarı metriği.
 - **Son dakikada her şeyi tek varlığa basma:** Oyunun parçası sayılabilir. Sınırlamak istenirse lig ayarı olarak "varlık başına en fazla %X" kuralı eklenebilir (Faz 2, FR-20).
 - **Sıralama 2 sn gecikmeli:** Oyuncu kendi portföyünü anlık, sıralamayı en fazla birkaç saniye geriden görür. Güvenlik sorunu değil; final sıra kapanış anında yeniden hesaplanır.
+
+## Webhook ve görevler: uygulama ayrıntısı (Faz 1)
+
+**Kod:** `apps/api/src/webhooks/`, `apps/api/src/quests/`. **Testler:** `webhooks.e2e.test.ts`, `quests.int.test.ts`.
+
+| Saldırı ya da hata                                                                   | Sonuç                                                     | Test |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------- | ---- |
+| Yanlış anahtarla imzalanmış bildirim                                                 | 401, hiçbir şey yazılmaz                                  | ✓    |
+| Başka platformun adına (`x-lig-issuer`) bildirim                                     | 401                                                       | ✓    |
+| İmzadan sonra gövdede oyuncu kimliğini değiştirme                                    | 401                                                       | ✓    |
+| 5 dakikadan eski ya da ileri tarihli zaman damgası (yakalanan isteği tekrar oynatma) | 401                                                       | ✓    |
+| Aynı olay kimliğini tekrar gönderme                                                  | 202 `duplicate: true`, olay ve görev bir kez sayılır      | ✓    |
+| İmzalı ama bilinmeyen alanlı, bilinmeyen tipte ya da enjeksiyonlu gövde              | 400                                                       | ✓    |
+| Gelecek tarihli ya da 7 günden eski olay (`occurredAt`)                              | 400                                                       | ✓    |
+| Görev olayını iki kez işleme, iki worker'ın aynı olayı alması                        | İlerleme kaynaktan sayılır, XP görev-dönem başına bir kez | ✓    |
+| A platformundaki katılımın B platformunun görevini tamamlaması                       | Sayımlar tenant ile sınırlı, tamamlanmaz                  | ✓    |
+| "Gerçek hesabıma geç" adresine `javascript:` yazılması (XSS)                         | Sunucu ve web yalnızca http(s) adresi kabul eder          | ✓    |
+
+**Bilinen açık konular:**
+
+- Webhook anahtarı veritabanında düz metin (K-014). Faz 4: KMS.
+- Webhook ucunda istek sınırı yok. Hatalı imzalı istek yağmuru her seferinde bir tenant sorgusuna yol açar; Faz 4'te platform IP izin listesi ve issuer başına sınır.
+- Fastify gövdeyi imza doğrulamasından önce JSON olarak ayrıştırıyor (prototype pollution korumalı `secure-json-parse` ile). İş kuralları ve kayıt yine de imzadan sonra. İstenirse webhook yolu için ham gövde ayrıştırıcısı ayrı tanımlanabilir.
+- Oyuncu gerçek işlem görevini tamamlamak için platformda gerçekten işlem yapmalı; bu, platformu "işlem teşviki" açısından regülasyona tabi kılabilir (NFR-06). Görev metni ve ödül türü hukukçuyla netleşmeli.

@@ -72,3 +72,17 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 
 - **fastify:** NestJS 11 fastify'ı 5.11.3'e sabitliyor; bu sürümde iki orta seviye açık var (GHSA-w2qp-rph6-63g4, GHSA-3m5p-2c4r-xxw2). İkisi de bizim kullanım şeklimizde tetiklenmiyor (doğrulama zod ile, `trustProxy` kapalı), yine de npm `overrides` ile 5.12.5'e çıkarıldı. `npm audit --omit=dev` temiz.
 - **Kalan 6 uyarı yalnızca geliştirme araçlarında:** vitest (GHSA-82fw-gwwq-j7x9, "redirect mock" kullanılmıyor) ve drizzle-kit içindeki eski esbuild (GHSA-67mh-4wv8-2f99, esbuild geliştirme sunucusu kullanılmıyor). Düzeltmeleri ana sürüm yükseltmesi istiyor (vitest 4+, drizzle-kit yeni seri); ayrı iş olarak planlanır. Üretim paketine girmezler.
+
+## K-013 · Görevler için PostgreSQL outbox, BullMQ değil
+
+- **Bağlam:** Görev ilerlemesi (FR-07) oyuncuyu bekletmeden arka planda hesaplanmalı. Planda BullMQ (Redis kuyruğu) vardı.
+- **Sorun:** Emir PostgreSQL'e yazıldıktan sonra kuyruğa ayrı bir adımla iş eklenir. Arada uygulama çökerse ya da Redis erişilemezse olay kaybolur; görev ilerlemez.
+- **Karar:** Transactional outbox. Emir, lige katılma ve platform olayı kaydedilirken aynı transaction'da `outbox_events` tablosuna bir satır yazılır. Worker satırları `FOR UPDATE SKIP LOCKED` ile alır, oyuncunun görevlerini değerlendirir, satırı işlendi olarak işaretler. Hata olursa yalnızca o oyuncunun olayları artan bekleme süresiyle tekrar denenir.
+- **İlerleme sayılır, biriktirilmez:** Olay yalnızca "bu oyuncunun görevlerine bak" sinyalidir. İlerleme her seferinde kaynak veriden (emirler, üyelikler, platform olayları) sayılır; aynı olay iki kez işlense de sonuç değişmez. XP defteri (K-011) görev + dönem başına tek ödül garantiler.
+- **Sonuç:** Yeni bağımlılık yok, olay kaybı yok, birden çok worker güvenle çalışır. Bedeli: saniyede bir küçük sorgu. Olay hacmi çok büyürse (on binlerce/sn) Kafka ya da SQS gibi bir kuyruğa taşınır; outbox deseni o durumda da kalır.
+
+## K-014 · Webhook doğrulaması: HMAC-SHA256
+
+- **Karar:** Platform her isteği `HMAC-SHA256(anahtar, "<unix saniye>.<ham gövde>")` ile imzalar; `x-lig-issuer`, `x-lig-timestamp`, `x-lig-signature: v1=<hex>` başlıklarıyla gönderir. Zaman damgası ±5 dk, olay kimliği platform başına tekil, karşılaştırma sabit sürede. Her ret aynı genel 401'i alır; sebep yalnızca logda.
+- **Neden SSO anahtarı değil:** Platformun giriş token'larını imzaladığı RSA anahtarı webhook için de kullanılabilirdi, ama anahtar ayrımı ilkesi gereği farklı amaçlar farklı anahtar kullanır; biri sızarsa diğeri etkilenmez. HMAC, webhook için sektör standardı (Stripe, GitHub) ve platformların uygulaması kolay.
+- **Bedeli:** Doğrulama için anahtarın okunabilir saklanması gerekiyor (özet tutulamaz). Şimdilik veritabanında düz metin; Faz 4'te KMS ile şifrelenecek.

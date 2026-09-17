@@ -294,12 +294,21 @@ describe('successful orders', () => {
     expect(orders.positions).toHaveLength(0);
   });
 
+  it('records exactly one quest event per filled order, none for rejected or replayed ones (FR-07)', async () => {
+    const body = buy('1000');
+    await order(body);
+    await order(body); // tekrar
+    await order(buy('999999')); // yetersiz bakiye
+    expect(orders.events).toEqual([{ tenantId: TENANT_A, playerId: playerA, type: 'order_placed' }]);
+  });
+
   it('rolls everything back if saving the order fails', async () => {
     orders.failNextInsert = true;
     const res = await order(buy('5000'));
     expectError(res, 500, 'INTERNAL');
     expect(cashOf()).toBe('100000.00');
     expect(orders.positions).toHaveLength(0);
+    expect(orders.events).toHaveLength(0);
   });
 });
 

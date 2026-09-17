@@ -1,14 +1,16 @@
 'use client';
 
-import { type PublicPlayer } from '@lig/shared';
+import { type MeResponse } from '@lig/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError, MOCK_PLATFORM_URL } from '../lib/api';
 import { LeagueList } from './league-list';
+import { QuestList } from './quest-list';
+import { RealAccountLink } from './real-account-link';
 
 type State =
   | { kind: 'loading' }
   | { kind: 'anonymous' }
-  | { kind: 'player'; player: PublicPlayer }
+  | ({ kind: 'player' } & MeResponse)
   | { kind: 'error'; message: string };
 
 export default function PlayerHome() {
@@ -16,8 +18,8 @@ export default function PlayerHome() {
 
   const load = useCallback(async () => {
     try {
-      const { player } = await apiFetch<{ player: PublicPlayer }>('/auth/me');
-      setState({ kind: 'player', player });
+      const me = await apiFetch<MeResponse>('/auth/me');
+      setState({ kind: 'player', ...me });
     } catch (e) {
       if (e instanceof ApiRequestError && e.status === 401) setState({ kind: 'anonymous' });
       else
@@ -51,13 +53,16 @@ export default function PlayerHome() {
         <>
           <div className="card-row">
             <p>
-              Hoş geldin, <strong>{state.player.displayName}</strong>.
+              Hoş geldin, <strong>{state.player.displayName}</strong> ·{' '}
+              <strong className="xp">{state.player.xp.toLocaleString('tr-TR')} XP</strong>
             </p>
             <button type="button" className="link" onClick={logout}>
               Çıkış yap
             </button>
           </div>
+          <RealAccountLink platform={state.platform} />
           <LeagueList />
+          <QuestList onProgress={load} />
         </>
       )}
     </main>

@@ -69,17 +69,25 @@ export class DrizzleLeagueRepository implements LeagueRepository {
       cash: string;
       joined_at: Date | string;
     }>(sql`
-      insert into memberships (league_id, player_id, cash)
-      select l.id, p.id, l.starting_cash
-      from leagues l
-      join players p on p.id = ${playerId}::uuid and p.tenant_id = l.tenant_id
-      where l.id = ${leagueId}::uuid
-        and l.tenant_id = ${tenantId}::uuid
-        and l.status = 'active'
-        and l.type <> 'friends'
-        and l.ends_at > ${now.toISOString()}::timestamptz
-      on conflict (league_id, player_id) do nothing
-      returning id, league_id, player_id, cash, joined_at
+      with created as (
+        insert into memberships (league_id, player_id, cash)
+        select l.id, p.id, l.starting_cash
+        from leagues l
+        join players p on p.id = ${playerId}::uuid and p.tenant_id = l.tenant_id
+        where l.id = ${leagueId}::uuid
+          and l.tenant_id = ${tenantId}::uuid
+          and l.status = 'active'
+          and l.type <> 'friends'
+          and l.ends_at > ${now.toISOString()}::timestamptz
+        on conflict (league_id, player_id) do nothing
+        returning id, league_id, player_id, cash, joined_at
+      ),
+      -- Görev olayı (FR-07) üyelikle aynı cümlede yazılır: üyelik oluşmadıysa olay da oluşmaz.
+      event as (
+        insert into outbox_events (tenant_id, player_id, type)
+        select ${tenantId}::uuid, created.player_id, 'league_joined' from created
+      )
+      select * from created
     `);
     const row = result.rows[0];
     if (!row) return null;

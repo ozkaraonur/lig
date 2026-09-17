@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { type SigningKeys } from './keys.js';
 import { LOGIN_PAGE_HTML, LOGIN_PAGE_SCRIPT } from './login-page.js';
 import { PriceSimulator } from './prices.js';
+import { TRADE_PAGE_HTML, TRADE_PAGE_SCRIPT } from './trade-page.js';
+import { type WebhookSender } from './webhooks.js';
 
 export interface MockPlatformOptions {
   keys: SigningKeys;
@@ -21,6 +23,8 @@ export interface MockPlatformOptions {
   webUrl: string;
   /** Yayınlanan fiyatlar. Verilmezse varsayılan piyasalarla yeni bir simülatör kullanılır. */
   prices?: PriceSimulator;
+  /** Gerçek işlem bildirimlerini lig API'sine gönderir (FR-31). Verilmezse işlem sayfası devre dışı. */
+  webhooks?: WebhookSender;
   logger?: boolean;
 }
 
@@ -33,6 +37,9 @@ const tokenRequestBody = z.object({ displayName: displayNameSchema.optional() })
  * - POST /players/:externalId/token      → imzalı, 5 dakikalık, tek kullanımlık oyuncu token'ı (FR-01)
  * - GET  /prices                         → son fiyatlar; lig API'si saniyede bir çeker (FR-30)
  * - POST /debug/prices/pause | resume     → fiyat akışını dondurur / sürdürür (bayat fiyat testi için)
+ * - GET  /trade                          → "gerçek işlem" ekranı; "Gerçek hesabıma geç" buraya açılır (FR-08)
+ * - POST /players/:externalId/real-trades → lig API'sine imzalı gerçek işlem bildirimi gönderir (FR-31)
+ * - POST /debug/webhooks/replay-last     → son bildirimi aynı olay kimliğiyle tekrar gönderir
  */
 export async function buildServer(options: MockPlatformOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 16 * 1024 });
@@ -89,6 +96,40 @@ export async function buildServer(options: MockPlatformOptions): Promise<Fastify
   app.post('/debug/prices/resume', async () => {
     prices.paused = false;
     return { paused: false };
+  });
+
+  const strictCsp =
+    "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+
+  app.get('/trade', async (_request, reply) =>
+    reply.type('text/html; charset=utf-8').header('content-security-policy', strictCsp).send(TRADE_PAGE_HTML),
+  );
+
+  app.get('/trade.js', async (_request, reply) =>
+    reply.type('text/javascript; charset=utf-8').send(TRADE_PAGE_SCRIPT),
+  );
+
+  app.post<{ Params: { externalId: string } }>('/players/:externalId/real-trades', async (request, reply) => {
+    const id = externalPlayerId.safeParse(request.params.externalId);
+    if (!id.success) {
+      return reply.status(400).send({ code: 'VALIDATION_FAILED', message: 'Geçersiz oyuncu kimliği.' });
+    }
+    if (!options.webhooks) return reply.status(503).send({ message: 'Webhook gönderimi yapılandırılmamış.' });
+    try {
+      return await options.webhooks.realTrade(id.data);
+    } catch {
+      return reply.status(502).send({ message: "Lig API'sine ulaşılamadı. npm run dev açık mı?" });
+    }
+  });
+
+  app.post('/debug/webhooks/replay-last', async (_request, reply) => {
+    const pending = options.webhooks?.replayLast();
+    if (!pending) return reply.status(404).send({ message: 'Henüz gönderilmiş bir bildirim yok.' });
+    try {
+      return await pending;
+    } catch {
+      return reply.status(502).send({ message: "Lig API'sine ulaşılamadı." });
+    }
   });
 
   app.get('/', async (_request, reply) =>

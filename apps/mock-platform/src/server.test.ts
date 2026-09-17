@@ -106,4 +106,16 @@ describe('mock platform', () => {
     expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toEqual({ paused: false });
     expect(await snapshot()).toHaveProperty('ticks');
   });
+
+  it('serves the trade page with a strict CSP', async () => {
+    const res = await app.inject({ method: 'GET', url: '/trade' });
+    expect(res.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(res.body).toContain('/trade.js');
+  });
+
+  it('reports that webhooks are not configured and validates the player id', async () => {
+    expect((await app.inject({ method: 'POST', url: '/players/oyuncu-1/real-trades' })).statusCode).toBe(503);
+    expect((await app.inject({ method: 'POST', url: '/players/%3Cx%3E/real-trades' })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: '/debug/webhooks/replay-last' })).statusCode).toBe(404);
+  });
 });

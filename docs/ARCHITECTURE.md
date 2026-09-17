@@ -21,7 +21,7 @@ Tek repo, modüler yapı (bkz. DECISIONS.md, K-001). API içindeki modüller bir
 
 1. **Giriş:** Platform, oyuncu için RS256 imzalı, en fazla 5 dk geçerli JWT üretir. API platformun açık anahtarıyla doğrular (FR-01).
 2. **Fiyat akışı:** Platform fiyatlarını bir HTTP ucunda yayınlar; API saniyede bir okur, son fiyatı zaman damgasıyla Redis'te tutar (FR-30).
-3. **Gerçek işlem olayı:** Platform webhook ile bildirir; `external_event_id` tekrar oynatmayı engeller (FR-31).
+3. **Gerçek işlem olayı:** Platform HMAC ile imzalı webhook gönderir (`POST /webhooks/platform`); zaman damgası penceresi ve `external_event_id` tekrar oynatmayı engeller (FR-31, K-014).
 
 ## Oyuncu girişi (FR-01)
 
@@ -88,6 +88,22 @@ Hesaplar BigInt ile (K-009). Pozisyon miktarı sıfıra inerse satır silinir.
 `GET /leagues/:id/leaderboard?limit=5`: süren ligde Redis'ten, kapanmış ligde PostgreSQL'den. İlk N oyuncu ve oyuncunun kendi satırı; kapanmış ligde kazandığı XP. Ödül kuralları: K-011.
 
 Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sıralamasıyla aynı değeri gösterir.
+
+## Görevler ve XP (FR-07)
+
+- Şablonlar: `join_league`, `place_orders`, `trade_distinct_assets`, `real_trade`. Dönem: `once` ya da `weekly` (pazartesi 00:00 TR, anahtar `2026-W38`).
+- Emir, katılma ve platform olayı aynı transaction'da `outbox_events`'e yazılır. `OutboxWorker` saniyede bir alır (`FOR UPDATE SKIP LOCKED`), oyuncunun görevlerini değerlendirir (K-013).
+- İlerleme kaynak veriden sayılır; hedefe ulaşınca `quest_progress.completed_at` ve `xp_ledger` (kaynak = `görevId:dönem`).
+- `GET /quests`: güncel dönem, anlık ilerleme, tamamlanma ve yenilenme zamanı. `GET /auth/me`: toplam XP ve platform bilgisi.
+
+## Webhook (FR-31) ve "Gerçek hesabıma geç" (FR-08)
+
+1. Oyuncu lig ekranında "Gerçek hesabıma geç"e dokunur; `tenants.real_trade_url` (yalnızca http/https) açılır.
+2. Platformda işlem yapılır, platform imzalı webhook gönderir: `x-lig-issuer`, `x-lig-timestamp`, `x-lig-signature: v1=HMAC-SHA256(anahtar, "ts.gövde")`.
+3. API: issuer → tenant, zaman penceresi ±5 dk, sabit sürede imza karşılaştırma, sonra gövde doğrulama. `platform_events` (tenant + olay kimliği tekil) ve oyuncu biliniyorsa outbox olayı aynı transaction'da.
+4. Ligi hiç açmamış kullanıcının olayı da `external_player_id` ile tutulur: Faz 2 metriklerinde (FR-23) oynayan ve oynamayan kullanıcılar karşılaştırılır.
+
+Sahte platformda: `http://localhost:4100/trade` (gerçek işlem ve "son bildirimi tekrar gönder").
 
 ## İstek sınırları (T9)
 

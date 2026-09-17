@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { assets, leagues, memberships, players } from '../db/schema';
+import { assets, leagues, memberships, outboxEvents, players } from '../db/schema';
 import {
   connectIntegration,
   createTenant,
@@ -182,14 +182,17 @@ describe('DrizzleLeagueRepository (integration)', () => {
     expect(await repo.createMembership(tenant, league, player, NOW)).toBeNull();
   });
 
-  it('creates exactly one membership when the same join arrives 20 times in parallel (T3)', async () => {
+  it('creates exactly one membership and one quest event when the same join arrives 20 times in parallel (T3)', async () => {
     const league = await addLeague(tenantA);
+    const player = await addPlayer(tenantA);
     const results = await Promise.all(
-      Array.from({ length: 20 }, () => repo.createMembership(tenantA, league, playerA, NOW)),
+      Array.from({ length: 20 }, () => repo.createMembership(tenantA, league, player, NOW)),
     );
     expect(results.filter(Boolean)).toHaveLength(1);
     const rows = await ctx.db.select().from(memberships).where(eq(memberships.leagueId, league));
     expect(rows).toHaveLength(1);
+    const events = await ctx.db.select().from(outboxEvents).where(eq(outboxEvents.playerId, player));
+    expect(events).toMatchObject([{ tenantId: tenantA, type: 'league_joined', processedAt: null }]);
   });
 
   it('cannot join once an admin closes the league, even with a stale read of it', async () => {

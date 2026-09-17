@@ -1,4 +1,5 @@
 import { type LeagueStatus, type LeagueType, type OrderSide } from '@lig/shared';
+import { type OutboxEvent } from '../outbox/outbox';
 
 /**
  * Emir motorunun veritabanı arayüzü. Kurallar `OrdersService` içinde; buradaki işlemler kural bilmez,
@@ -73,6 +74,8 @@ export interface OrderTransaction {
   /** Miktar sıfırsa pozisyon silinir. */
   savePosition(membershipId: string, position: PositionRecord): Promise<void>;
   insertOrder(order: NewOrder): Promise<OrderRecord>;
+  /** Görev worker'ı için olay (FR-07). Emirle aynı transaction'da yazılır. */
+  recordEvent(event: OutboxEvent): Promise<void>;
 }
 
 export interface OrderUnitOfWork {

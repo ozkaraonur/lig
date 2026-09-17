@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nes
 import {
   type CreateSessionRequest,
   createSessionRequest,
+  type MeResponse,
   type PublicPlayer,
   SESSION_COOKIE_NAME,
 } from '@lig/shared';
@@ -51,9 +52,9 @@ export class AuthController {
   async me(
     @CurrentSession() session: AuthenticatedSession,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<{ player: PublicPlayer }> {
+  ): Promise<MeResponse> {
     void reply.header('cache-control', 'no-store');
-    return { player: await this.auth.getPlayer(session) };
+    return this.auth.me(session);
   }
 
   @Post('logout')

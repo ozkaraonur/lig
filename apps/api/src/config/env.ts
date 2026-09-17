@@ -18,6 +18,8 @@ const envSchema = z.object({
   PRICE_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(1000),
   /** Sıralama yenileme ve lig kapanışı kontrol aralığı. NFR-01: sıralama 2 sn içinde güncellenir. */
   RANKING_INTERVAL_MS: z.coerce.number().int().min(500).max(60_000).default(2000),
+  /** Görev olaylarının (outbox) kontrol aralığı. */
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(1000),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -4,5 +4,6 @@ export * from './errors';
 export * from './format';
 export * from './leagues';
 export * from './orders';
+export * from './quests';
 export * from './ranking';
 export * from './schemas';

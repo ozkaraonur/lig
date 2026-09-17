@@ -11,6 +11,7 @@ import {
   type TradingAsset,
   type TradingLeague,
 } from './ports';
+import { type OutboxEvent } from '../outbox/outbox';
 
 interface StoredPosition extends PositionRecord {
   membershipId: string;
@@ -23,6 +24,7 @@ interface StoredPosition extends PositionRecord {
 export class InMemoryOrders implements OrderUnitOfWork, PortfolioReader {
   positions: StoredPosition[] = [];
   orders: OrderRecord[] = [];
+  events: OutboxEvent[] = [];
   private queue: Promise<unknown> = Promise.resolve();
   /** true ise bir sonraki emir kaydı hata verir: transaction'ın geri alındığını sınamak için. */
   failNextInsert = false;
@@ -37,6 +39,7 @@ export class InMemoryOrders implements OrderUnitOfWork, PortfolioReader {
       const snapshot = {
         positions: structuredClone(this.positions),
         orders: structuredClone(this.orders),
+        events: [...this.events],
         cash: this.leagues.memberships.map((m) => [m, m.cash] as const),
       };
       try {
@@ -44,6 +47,7 @@ export class InMemoryOrders implements OrderUnitOfWork, PortfolioReader {
       } catch (err) {
         this.positions = snapshot.positions;
         this.orders = snapshot.orders;
+        this.events = snapshot.events;
         for (const [m, cash] of snapshot.cash) m.cash = cash;
         throw err;
       }
@@ -103,6 +107,9 @@ export class InMemoryOrders implements OrderUnitOfWork, PortfolioReader {
           (p) => !(p.membershipId === membershipId && p.assetId === position.assetId),
         );
         if (!/^0+(\.0+)?$/.test(position.quantity)) this.positions.push({ membershipId, ...position });
+      },
+      recordEvent: async (event: OutboxEvent) => {
+        this.events.push(event);
       },
       insertOrder: async (order: NewOrder) => {
         if (this.failNextInsert) {

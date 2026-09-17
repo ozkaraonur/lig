@@ -150,7 +150,10 @@ describe('GET /auth/me', () => {
       cookies: { [SESSION_COOKIE_NAME]: cookie!.value },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ player: { displayName: 'Ece' } });
+    expect(res.json()).toEqual({
+      player: { id: expect.any(String), displayName: 'Ece', xp: 0 },
+      platform: { name: 'Test Platform', realTradeUrl: 'https://platform.test/trade' },
+    });
   });
 });
 

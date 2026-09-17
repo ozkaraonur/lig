@@ -6,6 +6,7 @@ import {
   type JoinLeagueResponse,
   type LeagueAssetPrice,
   type LeagueDetail,
+  type MeResponse,
   type OrderView,
   type PortfolioView,
 } from '@lig/shared';
@@ -15,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError } from '../../../lib/api';
 import { formatDateRange, LEAGUE_PHASE_LABELS, LEAGUE_TYPE_LABELS } from '../../../lib/labels';
 import { LeaderboardSection } from './leaderboard-section';
+import { RealAccountLink } from '../../real-account-link';
 import { PortfolioSection } from './portfolio-section';
 import { TradePanel } from './trade-panel';
 
@@ -39,6 +41,13 @@ export default function LeaguePage() {
   const [orders, setOrders] = useState<OrderView[]>([]);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [me, setMe] = useState<MeResponse | null>(null);
+
+  useEffect(() => {
+    apiFetch<MeResponse>('/auth/me')
+      .then(setMe)
+      .catch(() => undefined);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -172,6 +181,8 @@ export default function LeaguePage() {
       )}
 
       {league.joined && league.phase === 'upcoming' && <p>Lig başlayınca işlem yapabilirsin.</p>}
+
+      {me && <RealAccountLink platform={me.platform} />}
 
       {league.phase !== 'upcoming' && (
         <LeaderboardSection

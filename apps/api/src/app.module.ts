@@ -6,8 +6,10 @@ import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
 import { OrdersModule } from './orders/orders.module';
 import { PricesModule } from './prices/prices.module';
+import { QuestsModule } from './quests/quests.module';
 import { RankingModule } from './ranking/ranking.module';
 import { RedisModule } from './redis/redis.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { RedisModule } from './redis/redis.module';
     LeaguesModule,
     OrdersModule,
     RankingModule,
+    QuestsModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

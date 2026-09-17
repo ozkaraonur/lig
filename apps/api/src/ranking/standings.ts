@@ -1,5 +1,7 @@
-import { type XpReason } from '@lig/shared';
 import { type PositionToValue, totalValueUnits } from '../orders/valuation';
+import { type XpGrant } from '../xp/xp-ledger';
+
+export type { XpGrant };
 
 export interface MemberHolding {
   membershipId: string;
@@ -61,13 +63,6 @@ export const LEAGUE_REWARDS = {
   topTenPercent: 150,
   participation: 50,
 };
-
-export interface XpGrant {
-  playerId: string;
-  reason: XpReason;
-  sourceId: string;
-  amount: number;
-}
 
 export function computeRewards(
   leagueId: string,

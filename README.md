@@ -31,7 +31,7 @@ npm run dev                 # API, web ve sahte platform birlikte çalışır
 npm run db:seed
 ```
 
-Fiyatlar seed'den sonra en geç 30 saniye içinde akmaya başlar. Sahte platform sayfasındaki **Test araçları** bölümünden fiyat akışını durdurup "bayat fiyat" davranışını deneyebilirsin.
+Fiyatlar seed'den sonra en geç 30 saniye içinde akmaya başlar. Sahte platform sayfasındaki **Test araçları** bölümünden fiyat akışını durdurup "bayat fiyat" davranışını deneyebilirsin. `http://localhost:4100/trade` sayfası "gerçek işlem" bildirimi (webhook) gönderir; görevlerden biri buna bağlı.
 
 Çalıştığını kontrol et:
 

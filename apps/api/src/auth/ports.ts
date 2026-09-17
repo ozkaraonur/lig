@@ -9,8 +9,14 @@ export interface TenantKey {
   publicKeyPem: string;
 }
 
+export interface TenantPublicInfo {
+  name: string;
+  realTradeUrl: string | null;
+}
+
 export interface TenantDirectory {
   findByIssuer(issuer: string): Promise<TenantKey | null>;
+  findPublicInfo(tenantId: string): Promise<TenantPublicInfo | null>;
 }
 
 export interface ReplayStore {
@@ -44,6 +50,7 @@ export interface PlayerRecord {
   id: string;
   tenantId: string;
   displayName: string;
+  xp: number;
 }
 
 export interface PlayerRepository {

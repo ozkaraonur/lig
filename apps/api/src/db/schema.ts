@@ -13,6 +13,8 @@ import {
   LEAGUE_TYPES,
   ORDER_SIDES,
   PLATFORM_EVENT_TYPES,
+  QUEST_PERIODS,
+  QUEST_TEMPLATES,
   XP_REASONS,
 } from '@lig/shared';
 import { sql } from 'drizzle-orm';
@@ -39,6 +41,13 @@ export const assetClass = pgEnum('asset_class', ASSET_CLASSES);
 export const adminRole = pgEnum('admin_role', ADMIN_ROLES);
 export const platformEventType = pgEnum('platform_event_type', PLATFORM_EVENT_TYPES);
 export const xpReason = pgEnum('xp_reason', XP_REASONS);
+export const outboxEventType = pgEnum('outbox_event_type', [
+  'order_placed',
+  'league_joined',
+  'platform_event',
+]);
+
+const inList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(', '));
 
 const createdAt = () => timestamp({ withTimezone: true }).notNull().defaultNow();
 const cash = () => numeric({ precision: 20, scale: 2 });
@@ -57,6 +66,13 @@ export const tenants = pgTable('tenants', {
    * değiştirilemez: değiştirilebilseydi API'yi iç ağdaki adreslere istek atmaya yöneltmek (SSRF) mümkün olurdu.
    */
   priceFeedUrl: text(),
+  /**
+   * Platformun webhook imzalarında (FR-31, T5) kullandığı HMAC anahtarı. Doğrulama için okunabilir olması
+   * gerekir, bu yüzden özet (hash) olarak tutulamaz. Faz 4: KMS ile şifreli saklama.
+   */
+  webhookSecret: text(),
+  /** "Gerçek hesabıma geç" (FR-08) butonunun açtığı platform adresi. Yalnızca http(s). */
+  realTradeUrl: text(),
   dataResidency: text().notNull().default('any'),
   createdAt: createdAt(),
 });
@@ -209,16 +225,29 @@ export const virtualOrders = pgTable(
   ],
 );
 
-export const quests = pgTable('quests', {
-  id: uuid().primaryKey().defaultRandom(),
-  tenantId: uuid()
-    .notNull()
-    .references(() => tenants.id, { onDelete: 'cascade' }),
-  template: text().notNull(),
-  targetCount: integer().notNull(),
-  xpReward: integer().notNull(),
-  active: boolean().notNull().default(true),
-});
+export const quests = pgTable(
+  'quests',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    template: text().notNull(),
+    /** "once": bir kez; "weekly": her pazartesi (TR saati) yenilenir. */
+    period: text().notNull().default('once'),
+    targetCount: integer().notNull(),
+    xpReward: integer().notNull(),
+    active: boolean().notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index().on(t.tenantId, t.active),
+    check('quests_template_known', sql`${t.template} in (${inList(QUEST_TEMPLATES)})`),
+    check('quests_period_known', sql`${t.period} in (${inList(QUEST_PERIODS)})`),
+    check('quests_target_positive', sql`${t.targetCount} > 0`),
+    check('quests_xp_positive', sql`${t.xpReward} > 0`),
+  ],
+);
 
 export const questProgress = pgTable(
   'quest_progress',
@@ -229,10 +258,42 @@ export const questProgress = pgTable(
     questId: uuid()
       .notNull()
       .references(() => quests.id, { onDelete: 'cascade' }),
+    /** Dönem: "once" ya da "2026-W38". Haftalık görevin her haftası ayrı satırdır. */
+    periodKey: text().notNull(),
     progress: integer().notNull().default(0),
     completedAt: timestamp({ withTimezone: true }),
+    updatedAt: createdAt(),
   },
-  (t) => [primaryKey({ columns: [t.playerId, t.questId] })],
+  (t) => [primaryKey({ columns: [t.playerId, t.questId, t.periodKey] })],
+);
+
+/**
+ * Transactional outbox. Emir, katılma ve platform olayı kaydedilirken aynı transaction'da buraya da bir
+ * satır yazılır; görev worker'ı bu satırları işler. Uygulama olaydan hemen sonra çökse bile olay kaybolmaz
+ * (K-013).
+ */
+export const outboxEvents = pgTable(
+  'outbox_events',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    type: outboxEventType().notNull(),
+    createdAt: createdAt(),
+    availableAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp({ withTimezone: true }),
+    attempts: integer().notNull().default(0),
+    lastError: text(),
+  },
+  (t) => [
+    index('outbox_events_pending_idx')
+      .on(t.availableAt)
+      .where(sql`${t.processedAt} is null`),
+  ],
 );
 
 /** Platformdan webhook ile gelen olaylar. external_event_id tekrar oynatma saldırısını engeller. */
@@ -244,6 +305,8 @@ export const platformEvents = pgTable(
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
     externalEventId: text().notNull(),
+    /** Platformdaki takma oyuncu kimliği. Ligi hiç açmamış kullanıcıların olayları da tutulur (FR-23 karşılaştırma). */
+    externalPlayerId: text().notNull(),
     playerId: uuid().references(() => players.id, { onDelete: 'set null' }),
     type: platformEventType().notNull(),
     occurredAt: timestamp({ withTimezone: true }).notNull(),
