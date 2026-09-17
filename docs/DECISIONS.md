@@ -85,4 +85,40 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 
 - **Karar:** Platform her isteği `HMAC-SHA256(anahtar, "<unix saniye>.<ham gövde>")` ile imzalar; `x-lig-issuer`, `x-lig-timestamp`, `x-lig-signature: v1=<hex>` başlıklarıyla gönderir. Zaman damgası ±5 dk, olay kimliği platform başına tekil, karşılaştırma sabit sürede. Her ret aynı genel 401'i alır; sebep yalnızca logda.
 - **Neden SSO anahtarı değil:** Platformun giriş token'larını imzaladığı RSA anahtarı webhook için de kullanılabilirdi, ama anahtar ayrımı ilkesi gereği farklı amaçlar farklı anahtar kullanır; biri sızarsa diğeri etkilenmez. HMAC, webhook için sektör standardı (Stripe, GitHub) ve platformların uygulaması kolay.
-- **Bedeli:** Doğrulama için anahtarın okunabilir saklanması gerekiyor (özet tutulamaz). Şimdilik veritabanında düz metin; Faz 4'te KMS ile şifrelenecek.
+- **Bedeli:** Doğrulama için anahtarın okunabilir saklanması gerekiyor (özet tutulamaz). Faz 2'den itibaren şifreli saklanıyor (K-015).
+
+## K-015 · Gizli değerlerin şifrelenmesi: arayüz bugün, anahtar servisi pilotta
+
+- **Bağlam:** Webhook anahtarı (K-014) ve yöneticilerin MFA secret'ı doğrulama için okunabilir olmak zorunda, parola gibi özet olarak tutulamaz. Veritabanı ya da yedeği sızarsa saldırgan sahte webhook imzalar ya da MFA kodu üretir.
+- **Karar:** `SecretCipher` arayüzü (`apps/api/src/secrets/`). Bugünkü uygulama AES-256-GCM. Ana anahtar `SECRET_KEYS` ortam değişkeninden gelir, üretimde zorunludur. Şifreli metin anahtar kimliğini taşır (`lig1.k1....`). Anahtar değişiminde yeni anahtar başa eklenir ve `npm run secrets:rotate` eski kayıtları yeniden şifreler.
+- **Bağlam bağlama:** Her şifreli değer kendi satırına ve kolonuna bağlıdır (GCM ek doğrulama verisi, ör. `tenants.webhook_secret:<id>`). Veritabanına yazabilen biri A platformunun şifreli anahtarını B'nin satırına kopyalarsa çözme başarısız olur.
+- **Neden varsayılan AWS KMS değil:** Müşterilerimiz SPK'ya tabi. Kripto varlık hizmet sağlayıcılarının birincil ve ikincil sistemleri yurt içinde olmak zorunda, TÜBİTAK kriterleri de (cüzdan anahtarları için) anahtarların Türkiye'de üretilip yedeklenmesini istiyor; uyum ekiplerinin bakışı buna yakın olur. AWS'nin İstanbul Local Zone'u (Mayıs 2026) tam bölge değil, Frankfurt'a bağlı ve KMS sunmuyor; anahtar Frankfurt'ta kalırdı. Ayrıca tek buluta bağlanmak, müşterinin kendi veri merkezinde çalıştırma seçeneğini kapatırdı.
+- **Plan:** Faz 3.5'te OpenBao Transit adaptörü eklenir. OpenBao, Vault'un açık kaynak koludur ve Türkiye'deki bir veri merkezinde ya da müşterinin sunucusunda çalışır. Ana anahtar böylece uygulama ortamından çıkar. AWS KMS adaptörü yalnızca AWS'de barınan ve buna izin veren bir müşteri isterse yazılır.
+- **Bedeli:** Pilot öncesinde ana anahtar uygulama ortam değişkeninde duruyor; sunucuyu ele geçiren anahtara da ulaşır. Veritabanı ya da yedek sızıntısına karşı koruma bugünden var.
+
+## K-016 · Yönetici girişi
+
+- **Parola:** argon2id, OWASP asgari değerleri (19 MiB, 2 tur, 1 iş parçacığı), PHC biçimi. Node 24.7+ içindeki `crypto.argon2` kullanılır: Windows'ta derleme gerektiren bir paket yok. Libargon2 referans vektörüyle sınanır. Unicode NFKC ile normalleştirilir. Kural yalnızca uzunluk: 12–128 karakter (NIST 800-63B). Hesap yoksa da boşa bir doğrulama yapılır, yanıt süresinden kayıtlı e-posta anlaşılmaz.
+- **MFA:** TOTP (RFC 6238, SHA-1, 6 hane, 30 sn), herkes için zorunlu. Kod ±1 adım kabul edilir. Kullanılan adım veritabanına tek koşullu UPDATE ile yazılır: aynı kod ikinci kez, paralel isteklerle bile, kullanılamaz. Kurulumda secret önce giriş adımına (Redis, şifreli) yazılır, doğru kod girilince veritabanına geçer. Bağımlılık eklenmedi; RFC test vektörleriyle sınanır.
+- **Akış:** Parola doğruysa 10 dk'lık giriş adımı çerezi (`/admin/auth` yolu). Doğru koddan sonra bu adım silinir ve yeni bir oturum token'ı üretilir (oturum sabitleme olmaz). Oturum çerezi `/admin` yoluna gider, süresizdir (tarayıcı kapanınca silinir). Sunucuda 30 dk hareketsizlik ve 8 saat mutlak süre uygulanır.
+- **Rol ve hesap durumu her istekte veritabanından okunur.** Rolü düşürülen, silinen ya da MFA'sı sıfırlanan yöneticinin açık oturumu bir sonraki istekte geçersiz olur.
+- **E-posta bütün sistemde tekil.** Girişte platform seçtirmeden hangi tenant'a ait olduğu bulunur. Aynı kişi iki platformu yönetecekse iki ayrı e-posta kullanır. İleride gerekirse yönetici-tenant ilişki tablosuna geçilir.
+- **Deneme sınırları:** IP başına 15 dk'da 20 giriş, hesap başına 15 dk'da 10 giriş, yönetici başına 15 dk'da 5 kod, giriş adımı başına 3 kod. Parolayı bilen biri için MFA tahmin şansı günde yaklaşık %0,14. Bedeli: saldırgan bir yöneticiyi 15 dk girişten alıkoyabilir; hesap kalıcı kilitlenmez.
+- **Gövdeli her istek JSON olmalı** (415). NestJS'in Fastify adaptörü form gövdesini varsayılan olarak kabul ediyordu; başka bir sitedeki HTML formu CORS'a takılmadan giriş ucuna istek atabilirdi (login CSRF). Bu kontrol oyuncu ve webhook uçları için de geçerli.
+- **Henüz yok:** kurtarma kodları (MFA sıfırlama şimdilik `npm run admin:reset-mfa`, panelden 3. adımda), parola değiştirme, bir yöneticinin bütün oturumlarını kapatma, giriş olaylarının denetim kaydı.
+
+## K-017 · Oyunlaştırma kapsamı
+
+- **İlke:** Oyunlaştırma portföy değerini ve sıralamayı değiştirmez. Ödül yalnızca XP ve görünüm. Oyuncu hiçbir şeyi riske atarak ödül kazanmaz.
+- **Alınanlar (Faz 3):** kademe ligleri (yükselme/düşme), günlük seri (1 gün kaçırma hakkıyla), XP jokeri, çeşitlendirme görevleri, karşılıksız günlük tahmin, rozet ve unvanlar, arkadaş ligi.
+- **Alınmayanlar:**
+  - **Portföyü etkileyen jokerler** (2 kat getiri, kaybı %3'te durduran kalkan, sektör jokeri): kaybı sınırlanan oyuncu için en iyi strateji en oynak varlığa hepsini basmak olur. Sıralama beceriden şansa kayar, "gerçekçi pratik" vaadiyle çelişir. Kalkanın gerçekçi hali stop-loss emir türüdür (Faz 4).
+  - **XP çalan düello:** arkadaş ya da ikinci hesapla bilerek kaybedip XP taşımak mümkün. Arkadaş ligi aynı ihtiyacı karşılar.
+  - **XP koyarak tahmin:** XP bugün paraya çevrilemez, ama bunu platform belirler; XP hediyeye bağlanırsa bahise yaklaşır. Fiyat yönüne puan koymak ikili opsiyona benzer (AB'de bireysel yatırımcıya yasak). Havuzlu sistemde ikinci hesapla XP taşınabilir.
+  - **"BIST 30 dışından hisse ekle" görevi:** oyuncuyu belirli hisselere yönlendirir (NFR-06).
+- **Hukuk sorusu (pilot öncesi):** karşılıksız tahmin görevi, `real_trade` görevi ve platformun XP'yi hediyeye bağlaması durumu.
+
+## K-018 · Sıralama hileleri: kabul edilen riskler
+
+- **Çoklu hesap:** Şimdilik kabul. Ödül yalnızca XP olduğu için kazanç düşük. Kimlik platformda; pilotta platformdan "kimliği doğrulanmış hesap" bilgisi istenir ve ödül buna bağlanabilir (Faz 3.5).
+- **Son dakikada her şeyi tek varlığa basma:** Kabul, ek kural yok. Gerçek piyasadaki riskin aynısı, eğitsel açıdan sorun değil. Platform isterse ileride lig ayarı olarak varlık başına üst sınır eklenebilir (FR-20).

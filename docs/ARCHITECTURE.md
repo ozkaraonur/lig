@@ -105,9 +105,26 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 
 Sahte platformda: `http://localhost:4100/trade` (gerçek işlem ve "son bildirimi tekrar gönder").
 
+## Yönetici girişi (T6, K-016)
+
+1. `POST /admin/auth/login` (e-posta, parola). Deneme sınırları, argon2id doğrulama. Doğruysa 10 dk'lık giriş adımı çerezi (`lig_admin_preauth`, yol `/admin/auth`) ve sonraki adım: `mfa_setup` ya da `mfa_verify`.
+2. İlk girişte `POST /admin/auth/mfa/setup`: TOTP secret'ı üretilir, şifreli olarak giriş adımına yazılır, QR içeriği döner. Web QR'ı tarayıcıda çizer.
+3. `POST /admin/auth/mfa/verify` (6 haneli kod). Doğruysa giriş adımı silinir, `lig_admin_session` çerezi (yol `/admin`) ile yeni oturum açılır. İlk girişte secret bu anda veritabanına geçer.
+4. Yönetici uçları `AdminSessionGuard` ile korunur: oturum Redis'te (token özetiyle), 30 dk hareketsizlik ve 8 saat mutlak süre; hesap, rol ve MFA durumu her istekte veritabanından. Rol kısıtı `@AdminRoles('owner')`.
+
+Web: `/admin/login`, `/admin/mfa/setup`, `/admin/mfa`, `/admin`. Hesap açma ve MFA sıfırlama şimdilik komut satırından: `npm run admin:create`, `npm run admin:reset-mfa`.
+
+## Gizli değerler (K-015)
+
+Webhook anahtarı (`tenants.webhook_secret_ciphertext`) ve MFA secret'ı (`admin_users.mfa_secret_ciphertext`) `SecretCipher` ile şifreli. Bugünkü uygulama AES-256-GCM, anahtar `SECRET_KEYS` ortam değişkeninden (üretimde zorunlu, geliştirmede boşsa herkesin bildiği geliştirme anahtarı). Her değer kendi satırına bağlıdır (`secretContext`). Yeni anahtar: `npm run secrets:new-key`; değişim: yeni anahtarı başa ekle, `npm run secrets:rotate`. Faz 3.5'te aynı arayüzün OpenBao uygulaması gelir.
+
+## İstek gövdesi
+
+Gövdeli her istek `application/json` olmak zorunda, değilse 415 (`app.setup.ts`). Başka sitedeki HTML formlarının CORS'a takılmadan istek atmasını engeller.
+
 ## İstek sınırları (T9)
 
-Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumaları dakikada 120, katılma 10, emir 30. Giriş denemesi IP başına dakikada 20.
+Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumaları dakikada 120, katılma 10, emir 30. Oyuncu girişi IP başına dakikada 20. Yönetici girişi: IP başına 15 dk'da 20, hesap başına 10, MFA kodu yönetici başına 5, giriş adımı başına 3.
 
 ## Veri
 

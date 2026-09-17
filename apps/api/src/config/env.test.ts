@@ -39,4 +39,23 @@ describe('parseEnv', () => {
       expect((e as Error).message).not.toContain('super-secret');
     }
   });
+
+  it('requires SECRET_KEYS in production and validates its shape without echoing it', () => {
+    expect(() => parseEnv({ ...base, NODE_ENV: 'production' })).toThrow('SECRET_KEYS');
+    const key = Buffer.alloc(32, 7).toString('base64');
+    expect(parseEnv({ ...base, NODE_ENV: 'production', SECRET_KEYS: `k1:${key}` }).SECRET_KEYS).toBe(
+      `k1:${key}`,
+    );
+    try {
+      parseEnv({ ...base, SECRET_KEYS: 'k1:c2hvcnQta2V5LXZhbHVl' });
+      expect.unreachable();
+    } catch (e) {
+      expect((e as Error).message).toContain('SECRET_KEYS');
+      expect((e as Error).message).not.toContain('c2hvcnQta2V5LXZhbHVl');
+    }
+  });
+
+  it('treats an empty SECRET_KEYS as unset in development', () => {
+    expect(parseEnv({ ...base, SECRET_KEYS: '' }).SECRET_KEYS).toBeUndefined();
+  });
 });

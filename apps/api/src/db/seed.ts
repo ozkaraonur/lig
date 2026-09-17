@@ -10,6 +10,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import { loadEnv } from '../config/env';
+import { hashPassword } from '../admin-auth/password-hasher';
+import { secretContext } from '../secrets/secret-cipher';
+import { createSecretCipher } from '../secrets/secrets.module';
 import * as schema from './schema';
 
 const publicKeyResponse = z.object({
@@ -42,6 +45,10 @@ const SEED_ASSETS = [
 ] as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Yerel geliştirme yöneticisi. Bu parola gizli değildir; üretimde bu hesap açılmaz. */
+const DEV_ADMIN_EMAIL = 'yonetici@sahte-platform.test';
+const DEV_ADMIN_PASSWORD = 'gelistirme-yonetici-parolasi';
 
 /** Varsayılan görevler (FR-07). Faz 2'de yönetici panelinden şablonlarla tanımlanacak (FR-21). */
 const SEED_QUESTS = [
@@ -84,6 +91,7 @@ function seedLeagues(now: number) {
 
 async function main(): Promise<void> {
   const env = loadEnv();
+  const cipher = createSecretCipher(env);
   const mockUrl = process.env.MOCK_PLATFORM_URL ?? 'http://127.0.0.1:4100';
   const key = await fetchMockPlatformKey(mockUrl);
 
@@ -102,14 +110,19 @@ async function main(): Promise<void> {
         ssoPublicKey: key.publicKeyPem,
         priceFeedUrl,
         realTradeUrl,
-        webhookSecret,
       })
       .onConflictDoUpdate({
         target: schema.tenants.ssoIssuer,
-        set: { ssoPublicKey: key.publicKeyPem, priceFeedUrl, realTradeUrl, webhookSecret },
+        set: { ssoPublicKey: key.publicKeyPem, priceFeedUrl, realTradeUrl },
       })
       .returning({ id: schema.tenants.id, name: schema.tenants.name });
     if (!tenant) throw new Error('Tenant oluşturulamadı.');
+    // Anahtar şifreli yazılır (K-015). Bağlam tenant kimliğini içerdiği için kayıt açıldıktan sonra yazılır.
+    const webhookSecretCiphertext = await cipher.encrypt(
+      webhookSecret,
+      secretContext.tenantWebhookSecret(tenant.id),
+    );
+    await db.update(schema.tenants).set({ webhookSecretCiphertext }).where(eq(schema.tenants.id, tenant.id));
     console.warn(`Tenant hazır: ${tenant.name} (${tenant.id}), issuer: ${key.issuer}`);
 
     const assets = await db
@@ -159,6 +172,28 @@ async function main(): Promise<void> {
       questsCreated++;
     }
     console.warn(`Görevler hazır: ${questsCreated} yeni görev eklendi.`);
+
+    if (env.NODE_ENV === 'production') {
+      console.warn('Üretimde geliştirme yöneticisi açılmaz. "npm run admin:create" kullan.');
+    } else {
+      // Yalnızca yerel geliştirme hesabı. MFA ilk girişte kurulur.
+      const password = process.env.SEED_ADMIN_PASSWORD ?? DEV_ADMIN_PASSWORD;
+      const inserted = await db
+        .insert(schema.adminUsers)
+        .values({
+          tenantId: tenant.id,
+          email: DEV_ADMIN_EMAIL,
+          role: 'owner',
+          passwordHash: await hashPassword(password),
+        })
+        .onConflictDoNothing({ target: schema.adminUsers.email })
+        .returning({ id: schema.adminUsers.id });
+      console.warn(
+        inserted.length > 0
+          ? `Yönetici hazır: ${DEV_ADMIN_EMAIL} (parola .env'deki SEED_ADMIN_PASSWORD ya da README'deki geliştirme parolası)`
+          : `Yönetici zaten var: ${DEV_ADMIN_EMAIL}`,
+      );
+    }
   } finally {
     await pool.end();
   }

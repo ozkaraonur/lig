@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24.7.0 <25"
   },
   "scripts": {
     "postinstall": "npm run build -w @lig/shared",
@@ -25,11 +25,15 @@
     "db:migrate": "npm run db:migrate -w @lig/api",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
     "db:seed": "npm run db:seed -w @lig/api",
-    "db:seed:quick": "npm run db:seed:quick -w @lig/api"
+    "db:seed:quick": "npm run db:seed:quick -w @lig/api",
+    "secrets:new-key": "npm run secrets:new-key -w @lig/api --",
+    "secrets:rotate": "npm run secrets:rotate -w @lig/api --",
+    "admin:create": "npm run admin:create -w @lig/api --",
+    "admin:reset-mfa": "npm run admin:reset-mfa -w @lig/api --"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
-    "@types/node": "22.20.3",
+    "@types/node": "24.13.5",
     "concurrently": "10.0.5",
     "eslint": "9.39.5",
     "globals": "17.12.0",

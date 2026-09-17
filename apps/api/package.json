@@ -14,7 +14,11 @@
     "db:migrate": "tsx src/db/preflight.ts && drizzle-kit migrate",
     "db:check": "drizzle-kit check",
     "db:seed": "tsx src/db/seed.ts",
-    "db:seed:quick": "tsx src/db/seed-quick-league.ts"
+    "db:seed:quick": "tsx src/db/seed-quick-league.ts",
+    "secrets:new-key": "tsx src/secrets/generate-key.ts",
+    "secrets:rotate": "tsx src/secrets/rotate.ts",
+    "admin:create": "tsx src/admin-auth/admin-cli.ts create",
+    "admin:reset-mfa": "tsx src/admin-auth/admin-cli.ts reset-mfa"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

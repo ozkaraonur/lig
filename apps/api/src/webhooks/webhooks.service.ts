@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { platformEventWebhook, WEBHOOK_TOLERANCE_SECONDS } from '@lig/shared';
 import { AppError } from '../common/app-error';
 import { CLOCK_MS, type MsClock } from '../common/clock';
+import { SECRET_CIPHER, type SecretCipher, secretContext } from '../secrets/secret-cipher';
 import { PLATFORM_EVENT_STORE, type PlatformEventStore } from './ports';
 import { verifyWebhookSignature } from './webhook-signature';
 
@@ -23,6 +24,7 @@ export class WebhooksService {
   constructor(
     @Inject(PLATFORM_EVENT_STORE) private readonly store: PlatformEventStore,
     @Inject(CLOCK_MS) private readonly clock: MsClock,
+    @Inject(SECRET_CIPHER) private readonly cipher: SecretCipher,
   ) {}
 
   /**
@@ -41,8 +43,8 @@ export class WebhooksService {
     if (Math.abs(nowSeconds - Number(timestamp)) > WEBHOOK_TOLERANCE_SECONDS)
       return this.reject('stale_timestamp');
 
-    if (!verifyWebhookSignature(tenant.secret, timestamp, rawBody, signature))
-      return this.reject('bad_signature');
+    const secret = await this.readSecret(tenant.tenantId, tenant.secretCiphertext);
+    if (!verifyWebhookSignature(secret, timestamp, rawBody, signature)) return this.reject('bad_signature');
 
     let json: unknown;
     try {
@@ -67,6 +69,16 @@ export class WebhooksService {
 
     const result = await this.store.record(tenant.tenantId, parsed.data);
     return { duplicate: result.duplicate };
+  }
+
+  private async readSecret(tenantId: string, ciphertext: string): Promise<string> {
+    try {
+      return await this.cipher.decrypt(ciphertext, secretContext.tenantWebhookSecret(tenantId));
+    } catch {
+      // Saldırı değil yapılandırma hatası (yanlış SECRET_KEYS ya da elle kopyalanmış satır): ayrı loglanır.
+      this.logger.error(`Webhook secret of tenant ${tenantId} cannot be decrypted; check SECRET_KEYS`);
+      return this.reject('secret_unreadable');
+    }
   }
 
   private reject(reason: string): never {

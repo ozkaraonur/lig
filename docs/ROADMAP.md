@@ -34,22 +34,34 @@ Durum: `[x]` bitti · `[ ]` yapılacak. Parantezdeki kodlar tasarım dosyasında
 
 ## Faz 2 · Yönetim paneli ve BIST
 
-- [ ] Yönetici girişi: e-posta, parola, MFA
+Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık yükseltmeleri, 3) denetim kaydı ve yönetici yönetimi, 4) lig yönetimi ve uyum ayarları, 5) görev şablonları ve marka, 6) metrikler, 7) Sahte Aracı Kurum, 8) demo gerçek kripto fiyat modu.
+
+- [x] Gizli değerlerin şifreli saklanması: webhook anahtarı ve MFA secret'ı, anahtar değişimi komutu (K-015)
+- [x] Yönetici girişi: e-posta, argon2id parola, zorunlu TOTP MFA, ayrı oturum, deneme sınırları, rol kontrolü (K-016, T6)
+- [ ] ESLint 10, Vitest 4+ ve drizzle-kit ana sürüm yükseltmeleri (K-012)
+- [ ] Değiştirilemez denetim kaydı (NFR-07), giriş olayları dahil
+- [ ] Yönetici yönetimi: davet, rol değiştirme, MFA sıfırlama, parola değiştirme, açık oturumları kapatma
 - [ ] Lig oluşturma ve düzenleme (FR-20)
+- [ ] Kilitli uyum ayarları (FR-24)
 - [ ] Görev şablonları (FR-21)
 - [ ] Marka ayarları (FR-22)
 - [ ] Metrikler (FR-23, FR-31)
-- [ ] Kilitli uyum ayarları (FR-24)
-- [ ] Değiştirilemez denetim kaydı (NFR-07)
-- [ ] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), açık tema
+- [ ] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), sektör bilgisi, açık tema
 - [ ] Seans saati kuralı: hisse varlıklarında seans dışında emir verilmez
+- [ ] Tavan/taban kuralı: BIST hisselerinde günlük ±%10 fiyat sınırı
 - [ ] Demo için gerçek kripto fiyat modu (kullanım şartları uygun, herkese açık bir borsa fiyat ucu)
-- [ ] ESLint 10, Vitest 4+ ve drizzle-kit ana sürüm yükseltmeleri (K-012)
 
-## Faz 3 · Tam sürüm özellikleri
+## Faz 3 · Sosyal ve oyunlaştırma, tam sürüm özellikleri
 
+Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı değiştirmez; ödüller yalnızca XP ve görünüm (NFR-06).
+
+- [ ] Kademe ligleri: Bronz, Gümüş, Altın, Platin, Efsane; ~50 kişilik gruplar, haftalık ilk %20 yükselir, son %20 düşer
+- [ ] Günlük seri: günde en az bir işlem ya da ziyaret, 1 gün kaçırma hakkı, 7 günde XP ya da XP jokeri
+- [ ] XP jokeri: bir hafta görev XP'si 2 kat
+- [ ] Yeni görev şablonları: çeşitlendirme ("3 farklı sektörden varlık al")
+- [ ] Karşılıksız günlük tahmin: doğruysa az XP, yanlışsa kayıp yok, günde 1
+- [ ] Rozetler, unvanlar ve profil çerçeveleri (FR-10), "Tavan Avcısı" dahil
 - [ ] Arkadaş ligi ve davet kodu (FR-09)
-- [ ] Rozetler (FR-10)
 - [ ] AI koç: davranış analizi, LLM, al/sat filtresi, yanıt kaydı (FR-11)
 - [ ] CSV dışa aktarma (FR-25)
 
@@ -60,14 +72,16 @@ Durum: `[x]` bitti · `[ ]` yapılacak. Parantezdeki kodlar tasarım dosyasında
 - [ ] Gerçek fiyat akışı (FR-30): platformun fiyat ucu ya da lisanslı veri sağlayıcı (BIST lisans sorusu cevaplanmış olmalı)
 - [ ] Gerçek giriş: platformun imzaladığı oyuncu token'ı, anahtar değişim (rotasyon) süreci (FR-01)
 - [ ] Gerçek webhook: platformun işlem olayları, anahtar rotasyonu (FR-31)
+- [ ] Anahtar yönetimi: OpenBao Transit adaptörü, ana anahtar uygulama ortamından çıkar (K-015)
+- [ ] Çoklu hesap: platformdan "kimliği doğrulanmış hesap" bilgisi (K-018)
 - [ ] WebView içinde gerçek cihaz testi: iOS ve Android, çerez davranışı (NFR-08)
-- [ ] Veri konumu kararı: Türkiye'de barındırma gerekiyor mu (NFR-05)
+- [ ] Veri konumu kararı: Türkiye'de barındırma gerekiyor mu (NFR-05). SPK'ya tabi kripto platformlarının birincil ve ikincil sistemleri yurt içinde olmalı; lig modülünün bu kapsama girip girmediği hukukçuya soruluyor
 
 ## Faz 4 · Sağlamlaştırma ve yayın
 
 - [ ] Satır düzeyinde erişim kontrolü (PostgreSQL RLS)
 - [ ] Yük testi: 10.000 oyuncu, p95 < 300 ms (NFR-01)
 - [ ] Güvenlik testi, OWASP ASVS L2 kontrol listesi (NFR-03)
-- [ ] AWS: dev/staging/prod, Terraform, izleme ve loglar
-- [ ] Webhook ve SSO anahtarlarının KMS ile şifreli saklanması
+- [ ] Barındırma: dev/staging/prod, Terraform, izleme ve loglar. Sağlayıcı veri konumu kararına göre seçilir (Türkiye'deki bir veri merkezi, müşterinin kendi sunucusu ya da bulut)
+- [ ] Motor genişletme: stop-loss emir türü, açığa satış, temettü; "Temettü Emeklisi" ve "Açığa Satış Üstadı" rozetleri
 - [ ] Native SDK sarmalayıcı (opsiyonel)

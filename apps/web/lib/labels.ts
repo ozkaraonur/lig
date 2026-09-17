@@ -1,4 +1,16 @@
-import { formatCashTr, formatDecimalTr, type LeaguePhase, type LeagueType } from '@lig/shared';
+import {
+  type AdminRole,
+  formatCashTr,
+  formatDecimalTr,
+  type LeaguePhase,
+  type LeagueType,
+} from '@lig/shared';
+
+export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
+  owner: 'Sahip',
+  editor: 'Düzenleyici',
+  viewer: 'İzleyici',
+};
 
 export const LEAGUE_TYPE_LABELS: Record<LeagueType, string> = {
   weekly: 'Haftalık',

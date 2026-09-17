@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { DbModule } from './db/db.module';
@@ -9,6 +10,7 @@ import { PricesModule } from './prices/prices.module';
 import { QuestsModule } from './quests/quests.module';
 import { RankingModule } from './ranking/ranking.module';
 import { RedisModule } from './redis/redis.module';
+import { SecretsModule } from './secrets/secrets.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
@@ -16,6 +18,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     ConfigModule,
     DbModule,
     RedisModule,
+    SecretsModule,
     HealthModule,
     AuthModule,
     PricesModule,
@@ -24,6 +27,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     RankingModule,
     QuestsModule,
     WebhooksModule,
+    AdminAuthModule,
   ],
 })
 export class AppModule {}

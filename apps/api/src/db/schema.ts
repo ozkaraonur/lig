@@ -19,6 +19,7 @@ import {
 } from '@lig/shared';
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   check,
   index,
@@ -68,9 +69,9 @@ export const tenants = pgTable('tenants', {
   priceFeedUrl: text(),
   /**
    * Platformun webhook imzalarında (FR-31, T5) kullandığı HMAC anahtarı. Doğrulama için okunabilir olması
-   * gerekir, bu yüzden özet (hash) olarak tutulamaz. Faz 4: KMS ile şifreli saklama.
+   * gerekir, bu yüzden özet (hash) olarak tutulamaz; `SecretCipher` ile şifreli saklanır (K-015).
    */
-  webhookSecret: text(),
+  webhookSecretCiphertext: text(),
   /** "Gerçek hesabıma geç" (FR-08) butonunun açtığı platform adresi. Yalnızca http(s). */
   realTradeUrl: text(),
   dataResidency: text().notNull().default('any'),
@@ -84,14 +85,29 @@ export const adminUsers = pgTable(
     tenantId: uuid()
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
-    email: text().notNull(),
+    /**
+     * Küçük harfle saklanır ve bütün sistemde tekildir: giriş ekranında tenant seçtirmeden yöneticinin
+     * hangi platforma ait olduğu e-postadan bulunur (K-016).
+     */
+    email: text().notNull().unique(),
+    /** argon2id, PHC biçimi (`$argon2id$v=19$m=...`). */
     passwordHash: text().notNull(),
     role: adminRole().notNull().default('viewer'),
-    mfaSecret: text(),
+    /** TOTP secret'ı, `SecretCipher` ile şifreli (K-015). MFA kurulana kadar boş. */
+    mfaSecretCiphertext: text(),
+    mfaEnabledAt: timestamp({ withTimezone: true }),
+    /** Son kabul edilen TOTP zaman adımı. Aynı kod ikinci kez kullanılamaz. */
+    mfaLastUsedStep: bigint({ mode: 'number' }),
     lastLoginAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
   },
-  (t) => [unique().on(t.tenantId, t.email)],
+  (t) => [
+    check('admin_users_email_lowercase', sql`${t.email} = lower(${t.email})`),
+    check(
+      'admin_users_mfa_consistent',
+      sql`(${t.mfaSecretCiphertext} is null) = (${t.mfaEnabledAt} is null)`,
+    ),
+  ],
 );
 
 export const assets = pgTable(

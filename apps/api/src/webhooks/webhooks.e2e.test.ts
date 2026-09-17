@@ -5,6 +5,8 @@ import { Test } from '@nestjs/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { configureApp } from '../app.setup';
 import { CLOCK_MS } from '../common/clock';
+import { developmentKeyring, LocalSecretCipher } from '../secrets/local-secret-cipher';
+import { SECRET_CIPHER, secretContext } from '../secrets/secret-cipher';
 import { PLATFORM_EVENT_STORE, type PlatformEventStore } from './ports';
 import { signWebhook, verifyWebhookSignature } from './webhook-signature';
 import { MAX_EVENT_AGE_DAYS, WebhooksService } from './webhooks.service';
@@ -14,10 +16,13 @@ const NOW = Date.parse('2026-09-17T09:00:00Z');
 const SECRET = 'test-webhook-secret';
 const TENANT = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
+const cipher = new LocalSecretCipher(developmentKeyring());
+
 class FakeStore implements PlatformEventStore {
   readonly events = new Map<string, PlatformEventWebhook>();
+  secretCiphertext = '';
   async findTenant(issuer: string) {
-    return issuer === 'platform-a' ? { tenantId: TENANT, secret: SECRET } : null;
+    return issuer === 'platform-a' ? { tenantId: TENANT, secretCiphertext: this.secretCiphertext } : null;
   }
   async record(_tenantId: string, event: PlatformEventWebhook) {
     const duplicate = this.events.has(event.eventId);
@@ -31,12 +36,14 @@ let store: FakeStore;
 
 beforeEach(async () => {
   store = new FakeStore();
+  store.secretCiphertext = await cipher.encrypt(SECRET, secretContext.tenantWebhookSecret(TENANT));
   const moduleRef = await Test.createTestingModule({
     controllers: [WebhooksController],
     providers: [
       WebhooksService,
       { provide: CLOCK_MS, useValue: () => NOW },
       { provide: PLATFORM_EVENT_STORE, useValue: store },
+      { provide: SECRET_CIPHER, useValue: cipher },
     ],
   }).compile();
   app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), { rawBody: true });
@@ -123,6 +130,15 @@ describe('POST /webhooks/platform (FR-31, T5)', () => {
     ['a non-numeric timestamp', { timestamp: '1e9' }],
   ])('rejects %s with a generic 401 and records nothing', async (_label, options) => {
     const res = await send(event(), options);
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({ code: 'UNAUTHENTICATED', message: 'Webhook imzası doğrulanamadı.' });
+    expect(store.events.size).toBe(0);
+  });
+
+  it('rejects with the same generic 401 when the stored secret belongs to another tenant row', async () => {
+    // Veritabanına yazabilen biri başka tenant'ın şifreli anahtarını bu satıra kopyalamış olsun (K-015).
+    store.secretCiphertext = await cipher.encrypt(SECRET, secretContext.tenantWebhookSecret('other-tenant'));
+    const res = await send(event());
     expect(res.statusCode).toBe(401);
     expect(res.json()).toEqual({ code: 'UNAUTHENTICATED', message: 'Webhook imzası doğrulanamadı.' });
     expect(store.events.size).toBe(0);

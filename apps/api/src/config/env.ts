@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
+import { parseKeyring } from '../secrets/local-secret-cipher';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -20,6 +21,28 @@ const envSchema = z.object({
   RANKING_INTERVAL_MS: z.coerce.number().int().min(500).max(60_000).default(2000),
   /** Görev olaylarının (outbox) kontrol aralığı. */
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(1000),
+  /**
+   * Veritabanındaki gizli değerleri şifreleyen anahtarlar (K-015): `k2:<base64>,k1:<base64>`, ilki etkin.
+   * Üretimde zorunlu. Geliştirmede boş bırakılırsa herkesin bildiği geliştirme anahtarı kullanılır.
+   */
+  SECRET_KEYS: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v ? v : undefined))
+    .refine((v) => {
+      if (v === undefined) return true;
+      try {
+        parseKeyring(v);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+});
+
+const checkedEnvSchema = envSchema.refine((env) => env.NODE_ENV !== 'production' || env.SECRET_KEYS, {
+  path: ['SECRET_KEYS'],
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -29,7 +52,7 @@ export type Env = z.infer<typeof envSchema>;
  * başlamadan anlaşılır bir hatayla durur; değerlerin kendisi loga yazılmaz.
  */
 export function parseEnv(source: NodeJS.ProcessEnv): Env {
-  const result = envSchema.safeParse(source);
+  const result = checkedEnvSchema.safeParse(source);
   if (!result.success) {
     const fields = result.error.issues.map((i) => i.path.join('.')).join(', ');
     throw new Error(`Invalid environment configuration: ${fields}`);

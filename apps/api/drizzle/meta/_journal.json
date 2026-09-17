@@ -43,6 +43,13 @@
       "when": 1789633422194,
       "tag": "0005_quests_outbox_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789641541594,
+      "tag": "0006_encrypted_secrets_admin_mfa",
+      "breakpoints": true
     }
   ]
 }

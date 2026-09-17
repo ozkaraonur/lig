@@ -12,11 +12,11 @@ export class DrizzlePlatformEventStore implements PlatformEventStore {
 
   async findTenant(issuer: string): Promise<WebhookTenant | null> {
     const [row] = await this.db
-      .select({ tenantId: tenants.id, secret: tenants.webhookSecret })
+      .select({ tenantId: tenants.id, secretCiphertext: tenants.webhookSecretCiphertext })
       .from(tenants)
-      .where(and(eq(tenants.ssoIssuer, issuer), isNotNull(tenants.webhookSecret)))
+      .where(and(eq(tenants.ssoIssuer, issuer), isNotNull(tenants.webhookSecretCiphertext)))
       .limit(1);
-    return row?.secret ? { tenantId: row.tenantId, secret: row.secret } : null;
+    return row?.secretCiphertext ? { tenantId: row.tenantId, secretCiphertext: row.secretCiphertext } : null;
   }
 
   record(tenantId: string, event: PlatformEventWebhook) {

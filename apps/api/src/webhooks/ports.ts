@@ -2,7 +2,8 @@ import { type PlatformEventWebhook } from '@lig/shared';
 
 export interface WebhookTenant {
   tenantId: string;
-  secret: string;
+  /** `SecretCipher` ile şifreli; bağlam `secretContext.tenantWebhookSecret(tenantId)` (K-015). */
+  secretCiphertext: string;
 }
 
 export interface PlatformEventStore {

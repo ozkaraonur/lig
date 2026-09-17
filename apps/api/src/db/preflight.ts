@@ -5,6 +5,7 @@
  * Kullanım: tsx src/db/preflight.ts            (sadece PostgreSQL)
  *           tsx src/db/preflight.ts --redis    (PostgreSQL + Redis)
  */
+import * as crypto from 'node:crypto';
 import Redis from 'ioredis';
 import { Client } from 'pg';
 import { loadEnv } from '../config/env';
@@ -54,7 +55,17 @@ async function checkRedis(url: string): Promise<string | null> {
   }
 }
 
+/** Yönetici parolaları Node'un yerleşik argon2'si ile hash'lenir; 24.7'den eski Node'da yok. */
+export function checkNodeVersion(): string | null {
+  const hasArgon2 = typeof (crypto as unknown as { argon2?: unknown }).argon2 === 'function';
+  return hasArgon2
+    ? null
+    : `Node ${process.versions.node} çok eski: 24.7 veya üstü gerekli (node -v). nodejs.org'dan güncel Node 24'ü kur.`;
+}
+
 export async function checkInfrastructure(options: { redis: boolean }): Promise<string[]> {
+  const nodeProblem = checkNodeVersion();
+  if (nodeProblem) return [nodeProblem];
   let env;
   try {
     env = loadEnv();

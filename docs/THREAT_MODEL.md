@@ -25,11 +25,11 @@
 | T3  | Tampering              | Aynı emri paralel gönderip bakiyeyi eksiye düşürme (race condition)   | Tek transaction, satır kilidi, `cash >= 0` CHECK kısıtı, idempotency key                                                                                                        | Faz 1 ✓                             |
 | T4  | Information disclosure | Tenant A'nın yöneticisi tenant B'nin verisini görür (IDOR)            | Her sorguda tenant filtresi, yetki testleri, Faz 4'te PostgreSQL RLS                                                                                                            | Oyuncu lig uçları ✓, Faz 2–4        |
 | T5  | Spoofing               | Sahte webhook ile dönüşüm metriğini şişirme                           | HMAC imzası, zaman damgası penceresi, `external_event_id` benzersizliği                                                                                                         | Faz 1 ✓                             |
-| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                    | Güçlü parola hash'i (argon2id), zorunlu MFA, oturum süresi, giriş denemesi sınırı                                                                                               | Faz 2                               |
+| T6  | Elevation of privilege | Yönetici hesabının ele geçirilmesi                                    | argon2id, zorunlu TOTP MFA, ayrı ve kısa ömürlü oturum, IP/hesap/kod deneme sınırları, rol her istekte veritabanından, JSON dışı gövde reddi (login CSRF)                       | Giriş ✓, yönetici yönetimi Faz 2    |
 | T7  | Repudiation            | Lig ayarının kim tarafından değiştirildiğinin inkârı                  | Değiştirilemez denetim kaydı (NFR-07)                                                                                                                                           | Faz 2                               |
 | T8  | Tampering              | Prompt injection ile AI koçun al/sat önerisi vermesi                  | Çıktı filtresi, sistem talimatı, yanıt kaydı, kötü niyetli girdi test seti                                                                                                      | Faz 3                               |
 | T9  | Denial of service      | Emir ve sıralama uçlarına yoğun istek                                 | Oyuncu ve tenant başına rate limit, gövde boyutu sınırı (64 KB)                                                                                                                 | Oyuncu uçları ✓, tenant bazlı Faz 4 |
-| T10 | Information disclosure | Secret'ların repoya ya da loga sızması                                | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması                                                                                                      | Faz 0 ✓                             |
+| T10 | Information disclosure | Secret'ların repoya, loga ya da veritabanı yedeğiyle sızması          | `.gitignore`, CI'da gitleaks, logda secret yazmama kuralı, env doğrulaması; webhook anahtarı ve MFA secret'ı satıra bağlı AES-256-GCM ile şifreli (K-015)                       | Faz 0 ✓, şifreleme Faz 2 ✓          |
 | T11 | Tampering / SSRF       | Fiyat akışı ile sahte fiyat ya da API'yi iç ağa istek atmaya yöneltme | Fiyat adresi yalnızca kurulumda girilir, üretimde sadece https, yönlendirme takip edilmez, 2 sn zaman aşımı, 256 KB sınırı; her fiyat ayrı doğrulanır, eski fiyat yeniyi ezemez | Faz 1 ✓                             |
 
 ## T1 uygulama ayrıntısı (Faz 1)
@@ -134,10 +134,10 @@
 | Başka platformun sıralamasını görme                         | 404                                                                  | ✓    |
 | Sıralama yanıtından oyuncuların iç kimliklerini toplama     | Yanıtta iç kimlik yok, sadece görünen ad                             | ✓    |
 
-**Kararı Onur'la verilecek hile türleri:**
+**Kabul edilen hile riskleri (K-018):**
 
-- **Çoklu hesap:** Aynı kişi platformda birden fazla hesapla katılıp birini "risk hesabı" olarak kullanabilir. Kimlik platformda olduğu için tespit de platform tarafında. Öneri: sözleşmede platformun oyuncu başına tek `sub` garanti etmesi; bizde tenant başına aynı cihaz/IP'den çok sayıda katılım için ileride uyarı metriği.
-- **Son dakikada her şeyi tek varlığa basma:** Oyunun parçası sayılabilir. Sınırlamak istenirse lig ayarı olarak "varlık başına en fazla %X" kuralı eklenebilir (Faz 2, FR-20).
+- **Çoklu hesap:** Aynı kişi birden fazla hesapla katılıp birini "risk hesabı" olarak kullanabilir. Şimdilik kabul; ödül yalnızca XP. Pilotta platformdan "kimliği doğrulanmış hesap" bilgisi istenir.
+- **Son dakikada her şeyi tek varlığa basma:** Kabul, gerçek piyasa riskiyle aynı. Platform isterse ileride varlık başına üst sınır lig ayarı olur (FR-20).
 - **Sıralama 2 sn gecikmeli:** Oyuncu kendi portföyünü anlık, sıralamayı en fazla birkaç saniye geriden görür. Güvenlik sorunu değil; final sıra kapanış anında yeniden hesaplanır.
 
 ## Webhook ve görevler: uygulama ayrıntısı (Faz 1)
@@ -159,7 +159,43 @@
 
 **Bilinen açık konular:**
 
-- Webhook anahtarı veritabanında düz metin (K-014). Faz 4: KMS.
 - Webhook ucunda istek sınırı yok. Hatalı imzalı istek yağmuru her seferinde bir tenant sorgusuna yol açar; Faz 4'te platform IP izin listesi ve issuer başına sınır.
 - Fastify gövdeyi imza doğrulamasından önce JSON olarak ayrıştırıyor (prototype pollution korumalı `secure-json-parse` ile). İş kuralları ve kayıt yine de imzadan sonra. İstenirse webhook yolu için ham gövde ayrıştırıcısı ayrı tanımlanabilir.
 - Oyuncu gerçek işlem görevini tamamlamak için platformda gerçekten işlem yapmalı; bu, platformu "işlem teşviki" açısından regülasyona tabi kılabilir (NFR-06). Görev metni ve ödül türü hukukçuyla netleşmeli.
+
+## Yönetici girişi ve şifreli anahtarlar: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `apps/api/src/admin-auth/`, `apps/api/src/secrets/`. **Testler:** `admin-auth.e2e.test.ts`, `totp.test.ts` (RFC 6238 vektörleri), `password-hasher.test.ts` (libargon2 referans vektörü), `local-secret-cipher.test.ts`, `admin-auth.int.test.ts` ve `secrets.int.test.ts` (gerçek PostgreSQL ve Redis). Ayrıca çalışan sistemde tarayıcı ve curl ile denendi.
+
+| Saldırı ya da hata                                                       | Sonuç                                                                | Test |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------- | ---- |
+| Kayıtlı olmayan e-postayla ve yanlış parolayla giriş                     | Aynı 401 ve benzer süre (hesap keşfi yok)                            | ✓    |
+| Tek IP'den çok hesaba parola denemesi                                    | 15 dk'da 20 denemeden sonra 429                                      | ✓    |
+| Tek hesaba parola denemesi                                               | 15 dk'da 10 denemeden sonra 429, doğru parola da beklemek zorunda    | ✓    |
+| Parolayı bilip MFA kodunu tahmin etme                                    | Giriş adımı başına 3, yönetici başına 15 dk'da 5 deneme              | ✓    |
+| Omuz üstünden görülen kodu tekrar kullanma                               | 401; kullanılan zaman adımı veritabanında harcanır                   | ✓    |
+| Aynı geçerli kodu 4 ayrı giriş adımından aynı anda gönderme              | Yalnızca biri oturum açar                                            | ✓    |
+| Parola adımından sonra MFA'yı atlayıp panele girme                       | Giriş adımı çerezi oturum yerine geçmez, 401                         | ✓    |
+| MFA kurulu hesapta kurulumu yeniden başlatıp secret'ı değiştirme         | 403                                                                  | ✓    |
+| Giriş adımı token'ını oturum olarak kullanma (oturum sabitleme)          | Doğru koddan sonra yeni token üretilir, eskisi silinir               | ✓    |
+| Yönetici çerezini oyuncu uçlarında, oyuncu çerezini yönetici uçlarında   | 401, iki yönde de                                                    | ✓    |
+| Rolü düşürülen, silinen ya da MFA'sı sıfırlanan yöneticinin açık oturumu | Bir sonraki istekte 403 / 401                                        | ✓    |
+| 8 saati geçen oturum                                                     | 401, oturum silinir                                                  | ✓    |
+| Başka sitedeki HTML formundan giriş (login CSRF)                         | 415; gövdeli her istek JSON olmak zorunda                            | ✓    |
+| Gövdede `role` ya da `__proto__` gibi fazladan alan                      | 400                                                                  | ✓    |
+| Veritabanı yedeğinden webhook anahtarı ya da MFA secret'ı okuma          | Şifreli; anahtar veritabanında değil                                 | ✓    |
+| A platformunun şifreli anahtarını B platformunun satırına kopyalama      | Çözülemez, webhook genel 401 ile reddedilir                          | ✓    |
+| Şifreli metnin herhangi bir parçasını değiştirme                         | Çözülemez                                                            | ✓    |
+| Anahtar değişiminden sonra eski kayıtlar                                 | Eski anahtarla okunur, `secrets:rotate` yeni anahtarla yeniden yazar | ✓    |
+| Üretimde `SECRET_KEYS` olmadan başlatma                                  | Uygulama başlamaz, hata mesajında anahtar değeri yok                 | ✓    |
+| Bozuk ya da dev bellek isteyen parola hash'i kaydı                       | Doğrulanmaz, pahalı hesap yapılmaz                                   | ✓    |
+| QR kodun dış servise gönderilmesi                                        | QR tarayıcıda çizilir, secret sayfadan dışarı çıkmaz                 | Kod  |
+
+**Bilinen açık konular:**
+
+- Hesap başına deneme sınırı, saldırganın bir yöneticiyi 15 dk girişten alıkoymasına izin veriyor. Hesap kalıcı kilitlenmediği için kabul edildi.
+- Kurtarma kodu yok. Telefonunu kaybeden yönetici için MFA sıfırlama şimdilik komut satırından; panelden sahip rolüyle 3. adımda.
+- Bir yöneticinin bütün oturumlarını tek seferde kapatma ve parola değiştirme 3. adımda. Rol ve MFA değişikliği bugün de açık oturumları etkiliyor (her istekte veritabanı okunur).
+- Giriş olayları henüz denetim kaydına yazılmıyor (NFR-07, 3. adım).
+- Ana anahtar pilot öncesinde uygulama ortam değişkeninde (K-015). Sunucuyu ele geçiren anahtara da ulaşır. Faz 3.5: OpenBao.
+- Oturum çerezi `Secure`. Yerel geliştirmede tarayıcılar `localhost`'u istisna tutuyor; yerel ağdaki başka bir cihazdan `http://` ile açılırsa giriş çalışmaz.
