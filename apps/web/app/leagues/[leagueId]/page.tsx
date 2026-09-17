@@ -191,7 +191,7 @@ export default function LeaguePage() {
       {league.joined && league.phase === 'upcoming' && <p>Lig başlayınca işlem yapabilirsin.</p>}
 
       {me && <BrandingStyle branding={me.platform.branding} />}
-      {me && <RealAccountLink platform={me.platform} />}
+      {me && <RealAccountLink platform={me.platform} leagueId={params.leagueId} />}
 
       {league.phase !== 'upcoming' && (
         <LeaderboardSection

@@ -45,7 +45,8 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 - [x] Kilitli uyum ayarları, oyuncu ekranında sanal para uyarısı, platformun açıp kapatabildiği ayarlar (FR-24, K-022)
 - [x] Görev şablonları: hazır şablon, dönem, hedef ve XP; pasife alma, silme kuralı, eşzamanlı istek koruması (FR-21, K-023)
 - [x] Marka ayarları: platform adı, ana renk, logo; yazı renkleri kontrasta göre hesaplanır (FR-22, K-024)
-- [ ] Metrikler (FR-23, FR-31)
+- [x] `check`/`dev` shared paketini önce derler (K-026)
+- [x] Metrikler: dönüşüm hunisi, lig bazlı tablo, gerçek işlem yapanların lig modülüyle ilişkisi (FR-23, FR-31, K-025)
 - [ ] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), sektör bilgisi, açık tema
 - [ ] Seans saati kuralı: hisse varlıklarında seans dışında emir verilmez
 - [ ] Tavan/taban kuralı: BIST hisselerinde günlük ±%10 fiyat sınırı

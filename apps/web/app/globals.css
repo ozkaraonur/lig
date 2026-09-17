@@ -627,3 +627,40 @@ input[type='color'] {
   font-weight: 700;
   color: var(--preview-readable, var(--accent-readable));
 }
+
+/* Metrik panosu (FR-23) */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+
+.stat .big {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.segmented.range {
+  grid-template-columns: repeat(3, 1fr);
+  align-self: flex-start;
+  min-width: 260px;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.admin-table th.num {
+  text-align: right;
+}

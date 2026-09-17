@@ -51,9 +51,9 @@ Durdurmak için terminalde `Ctrl + C`, altyapıyı kapatmak için `npm run infra
 
 | Komut                                                                         | Ne yapar                                                                                 |
 | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `npm run check`                                                               | Format, lint, typecheck, test ve build. PR öncesi çalıştır.                              |
+| `npm run check`                                                               | Shared paketi derler, sonra format, lint, typecheck, test ve build. PR öncesi çalıştır.  |
 | `npm run test`                                                                | Birim ve uç testleri (veritabanı gerekmez)                                               |
-| `npm run test:int -w @lig/api`                                                | Gerçek PostgreSQL ve Redis ile entegrasyon testleri (`infra:up` ve `db:migrate` sonrası) |
+| `npm run test:int`                                                            | Gerçek PostgreSQL ve Redis ile entegrasyon testleri (`infra:up` ve `db:migrate` sonrası) |
 | `npm run db:generate`                                                         | Şema değiştiyse yeni migration üretir                                                    |
 | `npm run db:migrate`                                                          | Migration'ları veritabanına uygular                                                      |
 | `npm run format`                                                              | Kodu otomatik formatlar                                                                  |

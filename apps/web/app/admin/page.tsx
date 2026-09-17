@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { AdminShell } from './admin-shell';
 
 export default function AdminHome() {
@@ -11,7 +12,8 @@ export default function AdminHome() {
           <div className="card">
             <strong>{me.tenant.name}</strong>
             <span className="muted">
-              Lig, görev, marka ve metrik ekranları Faz 2&apos;nin sonraki adımlarında gelecek.
+              Ligleri, görevleri, marka ayarlarını ve uyum ayarlarını üstteki menüden yönetirsin. Modülün
+              platforma etkisi için <Link href="/admin/metrics">Metrikler</Link> ekranına bak.
             </span>
           </div>
         </>

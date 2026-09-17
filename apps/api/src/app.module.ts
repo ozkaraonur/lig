@@ -9,6 +9,7 @@ import { ConfigModule } from './config/config.module';
 import { DbModule } from './db/db.module';
 import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { OrdersModule } from './orders/orders.module';
 import { PricesModule } from './prices/prices.module';
 import { QuestsModule } from './quests/quests.module';
@@ -36,6 +37,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AdminTeamModule,
     AdminLeaguesModule,
     AdminSettingsModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

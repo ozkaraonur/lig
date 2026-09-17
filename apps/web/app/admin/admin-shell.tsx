@@ -9,6 +9,7 @@ import { ADMIN_ROLE_LABELS } from '../../lib/labels';
 
 const LINKS: Array<{ href: string; label: string; roles?: AdminRole[] }> = [
   { href: '/admin', label: 'Panel' },
+  { href: '/admin/metrics', label: 'Metrikler' },
   { href: '/admin/leagues', label: 'Ligler' },
   { href: '/admin/quests', label: 'Görevler' },
   { href: '/admin/branding', label: 'Marka' },

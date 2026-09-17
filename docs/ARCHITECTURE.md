@@ -147,6 +147,16 @@ Web: `/admin/leagues`, `/admin/leagues/new`, `/admin/leagues/[id]`, `/admin/comp
 
 Web: `/admin/quests` (tabloda hedef ve XP satır içi düzenlenir), `/admin/branding` (renk seçici ve önizleme).
 
+## Metrikler (FR-23, K-025)
+
+- `GET /admin/metrics?days=7|30|90`: her rol. Sayılar canlı sorgulanır, özet tablosu yok.
+- Toplamlar: oyuncu, aktif oyuncu (dönemde katılan ya da emir veren), katılma, emir, tamamlanan görev, dağıtılan XP, "gerçek hesabıma geç" dokunuşu (toplam ve farklı oyuncu), gerçek işlem bildirimi, açılan hesap.
+- Gerçek işlem yapan kullanıcılar üçe ayrılır: lige katılmış, modülü açmış ama katılmamış, modülü hiç açmamış (`platform_events.player_id` boş).
+- Lig tablosu: üye, dönemdeki emir ve o ligden gelen dokunuş; en yeni 50 lig.
+- `POST /real-trade/click`: oyuncu "Gerçek hesabıma geç"e dokunduğunda çağrılır, 204 döner. Gövdede yalnızca lig kimliği olabilir ve üyelik sunucuda doğrulanır. Oyuncu başına dakikada 20 istek.
+
+Web: `/admin/metrics`. Oyuncu tarafında bağlantı `keepalive` ile sayımı gönderir, yanıtı beklemez.
+
 ## Gizli değerler (K-015)
 
 Webhook anahtarı (`tenants.webhook_secret_ciphertext`) ve MFA secret'ı (`admin_users.mfa_secret_ciphertext`) `SecretCipher` ile şifreli. Bugünkü uygulama AES-256-GCM, anahtar `SECRET_KEYS` ortam değişkeninden (üretimde zorunlu, geliştirmede boşsa herkesin bildiği geliştirme anahtarı). Her değer kendi satırına bağlıdır (`secretContext`). Yeni anahtar: `npm run secrets:new-key`; değişim: yeni anahtarı başa ekle, `npm run secrets:rotate`. Faz 3.5'te aynı arayüzün OpenBao uygulaması gelir.

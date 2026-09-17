@@ -351,6 +351,27 @@ export const platformEvents = pgTable(
 );
 
 /**
+ * "Gerçek hesabıma geç" tıklamaları (FR-23). Huninin ortasındaki adım: lige katılan oyuncunun platformun
+ * gerçek işlem ekranına yönelmesi. Tıklayan oyuncunun kendi kimliği değil, bizdeki oyuncu satırı tutulur;
+ * ad, e-posta, IP ya da tarayıcı bilgisi yazılmaz (NFR-04). Ligden geldiyse hangi lig olduğu da saklanır.
+ */
+export const realTradeClicks = pgTable(
+  'real_trade_clicks',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    leagueId: uuid().references(() => leagues.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.tenantId, t.createdAt), index().on(t.playerId, t.createdAt)],
+);
+
+/**
  * Oyuncuya verilen her XP'nin değiştirilemez kaydı (NFR-07). (oyuncu, sebep, kaynak) tekildir:
  * lig kapanışı iki kez çalışsa ya da görev olayı tekrar gelse bile XP bir kez verilir.
  */

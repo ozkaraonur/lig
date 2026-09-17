@@ -12,7 +12,7 @@
   },
   "scripts": {
     "postinstall": "npm run build -w @lig/shared",
-    "dev": "concurrently -n api,web,mock -c blue,magenta,yellow \"npm run dev -w @lig/api\" \"npm run dev -w @lig/web\" \"npm run dev -w @lig/mock-platform\"",
+    "dev": "npm run shared:build && concurrently -n api,web,mock -c blue,magenta,yellow \"npm run dev -w @lig/api\" \"npm run dev -w @lig/web\" \"npm run dev -w @lig/mock-platform\"",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . --max-warnings=0",
@@ -23,14 +23,16 @@
     "infra:down": "docker compose down",
     "db:generate": "npm run db:generate -w @lig/api",
     "db:migrate": "npm run db:migrate -w @lig/api",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
+    "check": "npm run shared:build && npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
     "db:seed": "npm run db:seed -w @lig/api",
     "db:seed:quick": "npm run db:seed:quick -w @lig/api",
     "secrets:new-key": "npm run secrets:new-key -w @lig/api --",
     "secrets:rotate": "npm run secrets:rotate -w @lig/api --",
     "admin:create": "npm run admin:create -w @lig/api --",
     "admin:reset-mfa": "npm run admin:reset-mfa -w @lig/api --",
-    "audit:verify": "npm run audit:verify -w @lig/api"
+    "audit:verify": "npm run audit:verify -w @lig/api",
+    "shared:build": "npm run build -w @lig/shared",
+    "test:int": "npm run shared:build && npm run test:int -w @lig/api"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

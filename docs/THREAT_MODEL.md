@@ -284,3 +284,24 @@
 - Logo adresi platformun sunucusundan çekiliyor: oyuncunun IP'si o sunucuya gider ve adresin arkasındaki görsel sonradan değişebilir. Pilotta logonun kendi depolamamıza yüklenmesi değerlendirilecek (K-024).
 - "Gerçek işlem yap" görevinin hukuki değerlendirmesi bekliyor (K-017); platform ayarla kapatabiliyor (K-022).
 - Görev sayısı ayrı bir sınırla değil, şablon ve dönem kombinasyonu sayısıyla (8) sınırlı. Şablon listesi büyürse oyuncu ekranındaki görev sayısı için ayrı bir üst sınır gerekir.
+
+## Metrikler: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `apps/api/src/metrics/`, `apps/web/app/admin/metrics/`, `apps/web/app/real-account-link.tsx`. **Testler:** `metrics.int.test.ts` (HTTP üzerinden, gerçek PostgreSQL ve Redis), `packages/shared/src/metrics.test.ts`. Tarayıcıda: lige katıl, "Gerçek hesabıma geç"e dokun, panoda sayının ve lig satırının artışını gör.
+
+| Saldırı ya da hata                                          | Sonuç                                            | Test |
+| ----------------------------------------------------------- | ------------------------------------------------ | ---- |
+| Başka platformun sayılarını görme                           | Her sorgu tenant'a bağlı; sayılar 0              | ✓    |
+| Oturumsuz metrik okuma                                      | 401                                              | ✓    |
+| Listede olmayan dönem (`days=1`, `days=abc`, fazladan alan) | 400, katı şema                                   | ✓    |
+| Oturumsuz tıklama kaydı                                     | 401                                              | ✓    |
+| Üye olmadığı ligi tıklamaya iliştirme                       | Tıklama ligsiz kaydedilir, o ligin sayısı artmaz | ✓    |
+| Tıklama gövdesine adres ya da başka alan koyma              | 400; adres istemciden hiç alınmaz                | ✓    |
+| Tıklama sayısını şişirme                                    | Oyuncu başına dakikada 20 istek, sonrası 429     |      |
+| Aynı kullanıcının çok işlemi "çok kullanıcı" gibi görünmesi | Kullanıcı ve olay sayısı ayrı sütun              | ✓    |
+
+**Bilinen açık konular:**
+
+- Tıklama sayısı niyeti değil hareketi ölçer: aynı oyuncu butona tekrar tekrar dokunabilir. Bu yüzden panoda hem dokunuş hem farklı oyuncu sayısı var; pilotta dokunuşun günde bir kez sayılması değerlendirilebilir.
+- `real_trade_clicks` davranış verisidir. KVKK açısından takma kimlikle tutuluyor ama saklama süresi belirlenmeli; denetim kaydındaki IP sorusuyla birlikte hukukçuya gidecek.
+- Metrikler canlı sorgulanıyor. Çok büyük platformda sorgu maliyeti artar; ölçüm eşiği geçilirse günlük özet tablosuna geçilecek (K-025).

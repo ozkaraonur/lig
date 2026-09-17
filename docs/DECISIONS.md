@@ -192,3 +192,21 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 - **Logo yalnızca https:** Adres sunucuda doğrulanır; kayıt elle bozulsa bile oyuncuya yalnızca `https://` adresi gider. `javascript:` ya da `data:` adresi oyuncunun oturumunda kod çalıştırma riski taşır.
 - **Platform adı:** HTML ve kontrol karakteri kabul edilmez, 2-40 karakter. Ad denetim kaydına eski ve yeni değeriyle girer.
 - **Yükleme yok:** Logo dosyası sunucuya yüklenmez, platform kendi adresini verir. Dosya yükleme depolama, boyut ve içerik denetimi gerektirir; pilotta değerlendirilir.
+
+## K-025 · Metrikler: canlı sorgu, tıklama kaydı, karşılaştırma
+
+- **Soru:** FR-23'ün cevaplaması gereken tek şey var: lig modülü platformda gerçek işlemi artırıyor mu?
+- **Huni:** lige katılma → emir → "Gerçek hesabıma geç" dokunuşu → platformun webhook ile bildirdiği gerçek işlem (FR-31). Ortadaki adım ölçülmeden dönüşüm hesaplanamadığı için dokunuş `real_trade_clicks` tablosuna yazılır.
+- **Tıklamada ne saklanır:** platform, bizdeki oyuncu satırı, varsa lig ve zaman. IP, tarayıcı bilgisi ve platformdaki kimlik yok (NFR-04). Lig kimliği istemciden geldiği için üyelik sunucuda doğrulanır; üye olmayan oyuncunun tıklaması ligsiz kaydedilir, başka bir ligin sayısını şişiremez.
+- **Ölçüm oyuncunun yolunu kesmez:** istek `keepalive` ile gönderilir ve sonucu beklenmez; sayım başarısız olsa da bağlantı açılır.
+- **Canlı sorgu, özet tablosu değil:** Pano açıldığında sayılar doğrudan tablolardan hesaplanır. Yeni worker, yeni migrasyon ve "dün gece hesaplandı" gecikmesi yok; pilot ölçeğinde (binlerce satır) yeterince hızlı. Yüz binlerce oyuncuda ölçüm yavaşlarsa günlük özet tablosuna geçilir; arayüz değişmez çünkü hesaplama `MetricsRepository` portunun arkasında.
+- **Karşılaştırma:** Gerçek işlem yapan kullanıcılar üçe ayrılır: bir lige katılmış oyuncular, modülü açmış ama katılmamış oyuncular, modülü hiç açmamış platform kullanıcıları. Üçüncüsü `platform_events.player_id` boş olan kayıtlardan gelir; webhook ligi açmamış kullanıcıların olayını da taşıdığı için (ARCHITECTURE, webhook) karşılaştırma mümkün.
+- **Sayım birimi:** Kullanıcı sayısı ile olay sayısı ayrı gösterilir. Aynı kullanıcının on işlemi "on kişi" gibi okunursa pilot görüşmesinde yanlış rakam konuşulur.
+- **Dönem:** 7, 30 ya da 90 gün. Başka değer 400. Toplam oyuncu sayısı dönemden bağımsızdır, platformun bugünkü büyüklüğünü gösterir.
+- **Rol:** Her rol görebilir, izleyici dahil. Metrik okumak bir değişiklik değil; denetim kaydına da girmez.
+
+## K-026 · `check` ve `dev` shared paketini önce derler
+
+- **Sorun:** `packages/shared` derlenmiş `dist` klasöründen tüketiliyor. Yeni bir dosya eklendiğinde (ör. `metrics.ts`) `dist` eski kaldığı için `npm run typecheck` "böyle bir export yok" diyordu, `npm run dev` ise tarayıcıda "undefined is not a function". `check` shared'ı zaten derliyordu ama en sonda, `build` adımında: typecheck ondan önce patladığı için derleme hiç sıraya gelmiyordu. CI'da görünmüyordu, çünkü `npm ci` postinstall ile shared'ı derliyor.
+- **Karar:** `check`, `dev` ve `test:int` komutları `npm run shared:build` ile başlar. Ek maliyet bir saniyenin altında, karşılığında "benim makinemde çalışıyordu" sınıfı bir hata tamamen kalkıyor.
+- **Neden kaynaktan tüketmiyoruz:** Paket `dist` yayımlıyor; kaynağa (TypeScript project references ya da `exports` ile `src`) geçmek API, web ve mock-platform'un derleme kurulumunu değiştirir. Bugünkü sorunu üç satırlık betik değişikliği çözüyor, bu iş Faz 4'e kalabilir.
