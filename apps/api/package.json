@@ -46,6 +46,6 @@
     "drizzle-kit": "0.31.10",
     "tsx": "4.23.13",
     "unplugin-swc": "1.6.0",
-    "vitest": "3.2.7"
+    "vitest": "4.1.11"
   }
 }

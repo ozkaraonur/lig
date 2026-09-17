@@ -32,10 +32,10 @@
     "admin:reset-mfa": "npm run admin:reset-mfa -w @lig/api --"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "@types/node": "24.13.5",
     "concurrently": "10.0.5",
-    "eslint": "9.39.5",
+    "eslint": "10.10.0",
     "globals": "17.12.0",
     "prettier": "3.9.7",
     "typescript": "5.9.3",
@@ -44,6 +44,9 @@
   "overrides": {
     "@nestjs/platform-fastify": {
       "fastify": "5.12.5"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
     }
   }
 }

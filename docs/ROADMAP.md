@@ -38,7 +38,7 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 
 - [x] Gizli değerlerin şifreli saklanması: webhook anahtarı ve MFA secret'ı, anahtar değişimi komutu (K-015)
 - [x] Yönetici girişi: e-posta, argon2id parola, zorunlu TOTP MFA, ayrı oturum, deneme sınırları, rol kontrolü (K-016, T6)
-- [ ] ESLint 10, Vitest 4+ ve drizzle-kit ana sürüm yükseltmeleri (K-012)
+- [x] ESLint 10, Vitest 4.1, drizzle-kit içindeki esbuild açığı; `npm audit` 0 uyarı (K-012)
 - [ ] Değiştirilemez denetim kaydı (NFR-07), giriş olayları dahil
 - [ ] Yönetici yönetimi: davet, rol değiştirme, MFA sıfırlama, parola değiştirme, açık oturumları kapatma
 - [ ] Lig oluşturma ve düzenleme (FR-20)

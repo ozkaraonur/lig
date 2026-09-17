@@ -17,7 +17,7 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 ## K-003 · Kararlı ana sürümlere sabitleme
 
 - **Bağlam:** Eylül 2026 itibarıyla TypeScript 7, NestJS 12, Prisma 8 gibi yeni ana sürümler çıktı ya da çıkmak üzere.
-- **Karar:** Node.js 24 LTS, TypeScript 5.9, NestJS 11, Next.js 16, Vitest 3, ESLint 9. Bütün sürümler tam sabit (`^` yok).
+- **Karar:** Node.js 24 LTS, TypeScript 5.9, NestJS 11, Next.js 16, Vitest 3, ESLint 9. Bütün sürümler tam sabit (`^` yok). Faz 2'de Vitest 4.1 ve ESLint 10'a geçildi (K-012).
 - **Sonuç:** Öngörülebilir kurulum. Güncellemeler Dependabot PR'larıyla, testler geçtikten sonra alınır. Ana sürüm yükseltmeleri ayrı iş olarak planlanır.
 
 ## K-004 · API sunucusu Fastify
@@ -71,7 +71,11 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 ## K-012 · Bağımlılık güvenlik uyarıları
 
 - **fastify:** NestJS 11 fastify'ı 5.11.3'e sabitliyor; bu sürümde iki orta seviye açık var (GHSA-w2qp-rph6-63g4, GHSA-3m5p-2c4r-xxw2). İkisi de bizim kullanım şeklimizde tetiklenmiyor (doğrulama zod ile, `trustProxy` kapalı), yine de npm `overrides` ile 5.12.5'e çıkarıldı. `npm audit --omit=dev` temiz.
-- **Kalan 6 uyarı yalnızca geliştirme araçlarında:** vitest (GHSA-82fw-gwwq-j7x9, "redirect mock" kullanılmıyor) ve drizzle-kit içindeki eski esbuild (GHSA-67mh-4wv8-2f99, esbuild geliştirme sunucusu kullanılmıyor). Düzeltmeleri ana sürüm yükseltmesi istiyor (vitest 4+, drizzle-kit yeni seri); ayrı iş olarak planlanır. Üretim paketine girmezler.
+- **Kalan 6 uyarı yalnızca geliştirme araçlarındaydı** (vitest ve drizzle-kit içindeki eski esbuild). Faz 2, 2. adımda kapatıldı:
+  - **Vitest 3.2 → 4.1.11.** 5.0 o sırada iki haftalıktı; K-003 gereği olgun seriye geçildi. Test yazımında değişiklik gerekmedi.
+  - **ESLint 9 → 10.10, @eslint/js 10.** Yapılandırma `eslint/config` içindeki `defineConfig` ile yazıldı (`tseslint.config` eskidi). Kurallar aynı.
+  - **drizzle-kit 0.31.10'da kaldı:** yeni seri (1.0) hâlâ beta. İçindeki `@esbuild-kit/core-utils` paketinin eski esbuild'i npm `overrides` ile drizzle-kit'in kendi kullandığı 0.25.12'ye sabitlendi; `generate`, `check` ve `migrate` boş ve dolu veritabanında denendi. drizzle-kit 1.0 kararlı çıkınca override kaldırılır.
+  - Sonuç: `npm audit` (geliştirme paketleri dahil) 0 uyarı.
 
 ## K-013 · Görevler için PostgreSQL outbox, BullMQ değil
 
