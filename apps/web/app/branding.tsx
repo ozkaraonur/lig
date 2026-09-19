@@ -11,10 +11,12 @@ import { useEffect } from 'react';
 export function BrandingStyle({ branding }: { branding: PublicBranding }) {
   useEffect(() => {
     const root = document.documentElement;
+    // Tema modu CSS token setini seçer (globals.css); renkler ona göre hesaplanır.
+    root.dataset.theme = branding.themeMode;
     root.style.setProperty('--accent', branding.primaryColor);
     root.style.setProperty('--accent-text', readableTextColor(branding.primaryColor));
-    root.style.setProperty('--accent-readable', accentTextColor(branding.primaryColor));
-  }, [branding.primaryColor]);
+    root.style.setProperty('--accent-readable', accentTextColor(branding.primaryColor, branding.themeMode));
+  }, [branding.primaryColor, branding.themeMode]);
   return null;
 }
 

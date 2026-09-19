@@ -34,7 +34,14 @@ export class InMemoryLeagueRepository implements LeagueRepository {
   }
 
   addAsset(tenantId: string, symbol: string, assetClass: AssetClass = 'crypto'): AssetRecord {
-    const asset = { id: randomUUID(), tenantId, symbol, name: symbol, assetClass };
+    const asset = {
+      id: randomUUID(),
+      tenantId,
+      symbol,
+      name: symbol,
+      assetClass,
+      sector: assetClass === 'equity' ? 'Test Sektörü' : null,
+    };
     this.assets.push(asset);
     return asset;
   }

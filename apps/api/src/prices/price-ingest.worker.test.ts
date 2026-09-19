@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { parseEnv } from '../config/env';
-import { FakeFeedClient, FakeFeedDirectory, InMemoryPriceStore, NOW_MS } from './fakes.test-utils';
+import {
+  FakeAssetCloseRepository,
+  FakeFeedClient,
+  FakeFeedDirectory,
+  InMemoryPriceStore,
+  NOW_MS,
+} from './fakes.test-utils';
+import { MarketCloseService } from './market-close.service';
 import { PriceIngestService } from './price-ingest.service';
 import { PriceIngestWorker, SOURCES_REFRESH_MS } from './price-ingest.worker';
 
@@ -16,12 +23,13 @@ function setup(overrides: Partial<typeof env> = {}) {
   });
   const store = new InMemoryPriceStore();
   const directory = new FakeFeedDirectory([
-    { tenantId: 'a', url: urlA, symbols: new Set(['BTC']) },
-    { tenantId: 'b', url: urlB, symbols: new Set(['BTC']) },
+    { tenantId: 'a', url: urlA, symbols: new Set(['BTC']), equities: new Map() },
+    { tenantId: 'b', url: urlB, symbols: new Set(['BTC']), equities: new Map() },
   ]);
   const clock = () => now;
   const worker = new PriceIngestWorker(
     new PriceIngestService(client, store, clock),
+    new MarketCloseService(new FakeAssetCloseRepository(), store, clock),
     directory,
     { ...env, ...overrides },
     clock,

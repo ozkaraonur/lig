@@ -1,7 +1,18 @@
 import { z } from 'zod';
 
-/** Marka ayarları (FR-22). Oyuncu ekranının rengi, logosu ve platform adı. */
+/** Marka ayarları (FR-22). Oyuncu ekranının rengi, logosu, platform adı ve tema modu. */
 export const DEFAULT_PRIMARY_COLOR = '#c6f24e';
+
+/** Tema modu: koyu (kripto borsası gibi) ya da açık (aracı kurum gibi). */
+export const THEME_MODES = ['dark', 'light'] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
+export const DEFAULT_THEME_MODE: ThemeMode = 'dark';
+
+/** Oyuncu ekranının zemin rengi (globals.css `--bg`). Kontrast hesabı buna göre yapılır. */
+export const PAGE_BACKGROUNDS: Record<ThemeMode, string> = {
+  dark: '#0d0f14',
+  light: '#f7f8fa',
+};
 
 export const brandColor = z
   .string()
@@ -33,6 +44,7 @@ export const brandingUpdateRequest = z
     name: platformDisplayName,
     primaryColor: brandColor,
     logoUrl: brandLogoUrl.nullable(),
+    themeMode: z.enum(THEME_MODES),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'En az bir alan değişmeli');
@@ -42,12 +54,14 @@ export interface BrandingView {
   name: string;
   primaryColor: string;
   logoUrl: string | null;
+  themeMode: ThemeMode;
 }
 
 /** Oyuncuya giden marka bilgisi. */
 export interface PublicBranding {
   primaryColor: string;
   logoUrl: string | null;
+  themeMode: ThemeMode;
 }
 
 /**
@@ -58,8 +72,8 @@ export function readableTextColor(hex: string): '#ffffff' | '#12151c' {
   return relativeLuminance(rgb(hex)) > 0.35 ? '#12151c' : '#ffffff';
 }
 
-/** Oyuncu ekranının zemin rengi (globals.css `--bg`). Kontrast hesabı buna göre yapılır. */
-export const PAGE_BACKGROUND = '#0d0f14';
+/** Koyu temanın zemini; geriye dönük ad. */
+export const PAGE_BACKGROUND = PAGE_BACKGROUNDS.dark;
 
 /** WCAG AA: normal boyutlu yazı için en az 4.5:1. */
 const MIN_CONTRAST = 4.5;
@@ -69,14 +83,17 @@ const MIN_CONTRAST = 4.5;
  * (ör. lacivert) link, XP ve rozet yazıları zeminle karışır; renk okunur kontrasta ulaşana kadar
  * beyaza doğru açılır. Zaten yeterliyse renk aynen döner, yani varsayılan tema değişmez.
  */
-export function accentTextColor(hex: string): string {
+export function accentTextColor(hex: string, mode: ThemeMode = DEFAULT_THEME_MODE): string {
   const base = rgb(hex);
-  const background = relativeLuminance(rgb(PAGE_BACKGROUND));
+  const backgroundHex = PAGE_BACKGROUNDS[mode];
+  const background = relativeLuminance(rgb(backgroundHex));
+  // Koyu zeminde renk beyaza, açık zeminde siyaha doğru karıştırılarak okunur hale getirilir.
+  const target = mode === 'light' ? 0 : 255;
   for (let step = 0; step <= 20; step += 1) {
-    const mixed = base.map((c) => Math.round(c + (255 - c) * (step / 20))) as [number, number, number];
+    const mixed = base.map((c) => Math.round(c + (target - c) * (step / 20))) as [number, number, number];
     if (contrast(relativeLuminance(mixed), background) >= MIN_CONTRAST) return toHex(mixed);
   }
-  return '#ffffff';
+  return mode === 'light' ? '#000000' : '#ffffff';
 }
 
 function rgb(hex: string): [number, number, number] {
@@ -99,3 +116,8 @@ function contrast(a: number, b: number): number {
   const [light, dark] = a > b ? [a, b] : [b, a];
   return (light + 0.05) / (dark + 0.05);
 }
+
+export const THEME_MODE_LABELS: Record<ThemeMode, string> = {
+  dark: 'Koyu',
+  light: 'Açık',
+};

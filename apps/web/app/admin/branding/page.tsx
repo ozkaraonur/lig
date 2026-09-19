@@ -1,6 +1,15 @@
 'use client';
 
-import { accentTextColor, type BrandingView, DEFAULT_PRIMARY_COLOR, readableTextColor } from '@lig/shared';
+import {
+  accentTextColor,
+  type BrandingView,
+  DEFAULT_PRIMARY_COLOR,
+  DEFAULT_THEME_MODE,
+  readableTextColor,
+  THEME_MODE_LABELS,
+  THEME_MODES,
+  type ThemeMode,
+} from '@lig/shared';
 import { type FormEvent, useEffect, useState } from 'react';
 import { apiFetch } from '../../../lib/api';
 import { adminErrorMessage } from '../admin-errors';
@@ -20,6 +29,7 @@ function Branding({ canEdit }: { canEdit: boolean }) {
   const [name, setName] = useState('');
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR);
   const [logoUrl, setLogoUrl] = useState('');
+  const [themeMode, setThemeMode] = useState<ThemeMode>(DEFAULT_THEME_MODE);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,6 +40,7 @@ function Branding({ canEdit }: { canEdit: boolean }) {
         setName(b.name);
         setPrimaryColor(b.primaryColor);
         setLogoUrl(b.logoUrl ?? '');
+        setThemeMode(b.themeMode);
         setLoaded(true);
       })
       .catch((e: unknown) => setMessage({ ok: false, text: adminErrorMessage(e) }));
@@ -42,11 +53,17 @@ function Branding({ canEdit }: { canEdit: boolean }) {
     try {
       const saved = await apiFetch<BrandingView>('/admin/branding', {
         method: 'PATCH',
-        body: JSON.stringify({ name, primaryColor, logoUrl: logoUrl.trim() === '' ? null : logoUrl.trim() }),
+        body: JSON.stringify({
+          name,
+          primaryColor,
+          themeMode,
+          logoUrl: logoUrl.trim() === '' ? null : logoUrl.trim(),
+        }),
       });
       setName(saved.name);
       setPrimaryColor(saved.primaryColor);
       setLogoUrl(saved.logoUrl ?? '');
+      setThemeMode(saved.themeMode);
       setMessage({ ok: true, text: 'Kaydedildi. Oyuncu ekranı yenilendiğinde yeni görünümü alır.' });
     } catch (e) {
       setMessage({ ok: false, text: adminErrorMessage(e) });
@@ -60,7 +77,10 @@ function Branding({ canEdit }: { canEdit: boolean }) {
   return (
     <>
       <h1>Marka</h1>
-      <p>Oyuncu ekranında görünen ad, ana renk ve logo. Yazı rengi renkten hesaplanır.</p>
+      <p>
+        Oyuncu ekranında görünen ad, tema, ana renk ve logo. Yazı renkleri ana renkten ve tema zemininden
+        hesaplanır; okunmaz bir kombinasyon seçilemez.
+      </p>
       {message && (
         <p role={message.ok ? 'status' : 'alert'} className={message.ok ? 'ok' : undefined}>
           {message.text}
@@ -104,6 +124,21 @@ function Branding({ canEdit }: { canEdit: boolean }) {
               />
             </label>
           </div>
+          <label>
+            Tema
+            <select
+              name="themeMode"
+              value={themeMode}
+              disabled={!canEdit}
+              onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+            >
+              {THEME_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {THEME_MODE_LABELS[mode]}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Logo adresi (https, boş bırakılabilir)
             <input

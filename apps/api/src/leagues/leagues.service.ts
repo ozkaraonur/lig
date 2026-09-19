@@ -3,12 +3,13 @@ import {
   canJoinLeague,
   type JoinLeagueResponse,
   type LeagueAsset,
-  type LeagueAssetPrice,
   type LeagueDetail,
   type LeagueMembership,
   leaguePhase,
   type LeaguePhase,
+  type LeaguePricesResponse,
   type LeagueSummary,
+  marketStatus,
 } from '@lig/shared';
 import { type SessionData } from '../auth/ports';
 import { AppError } from '../common/app-error';
@@ -56,10 +57,13 @@ export class LeaguesService {
     };
   }
 
-  async latestPrices(session: SessionData, leagueId: string): Promise<LeagueAssetPrice[]> {
+  async latestPrices(session: SessionData, leagueId: string): Promise<LeaguePricesResponse> {
     const league = await this.requireLeague(session, leagueId);
     const assets = await this.orderedAssets(session.tenantId, league);
-    return this.priceService.latestFor(session.tenantId, assets);
+    const prices = await this.priceService.latestFor(session.tenantId, assets);
+    // Seans durumu yalnızca hisse varlığı olan ligde anlamlı; kripto 7/24 açık.
+    const hasEquity = assets.some((a) => a.assetClass === 'equity');
+    return { prices, market: hasEquity ? marketStatus(new Date(this.clock())) : null };
   }
 
   /**
@@ -108,6 +112,7 @@ export class LeaguesService {
       ...prices[i]!,
       name: asset.name,
       assetClass: asset.assetClass,
+      sector: asset.sector,
     }));
   }
 }

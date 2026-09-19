@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { CLOCK_MS, type MsClock } from '../common/clock';
 import { ENV, type Env } from '../config/env';
+import { MarketCloseService } from './market-close.service';
 import { PriceIngestService } from './price-ingest.service';
 import { PRICE_FEED_DIRECTORY, type PriceFeedDirectory, type PriceFeedSource } from './ports';
 
@@ -27,6 +28,7 @@ export class PriceIngestWorker implements OnApplicationBootstrap, OnApplicationS
 
   constructor(
     private readonly ingest: PriceIngestService,
+    private readonly marketClose: MarketCloseService,
     @Inject(PRICE_FEED_DIRECTORY) private readonly directory: PriceFeedDirectory,
     @Inject(ENV) private readonly env: Env,
     @Inject(CLOCK_MS) private readonly clock: MsClock,
@@ -60,6 +62,8 @@ export class PriceIngestWorker implements OnApplicationBootstrap, OnApplicationS
       }
     }
     await Promise.allSettled(this.sources.map((source) => this.ingest.ingest(source)));
+    // Seans kapandıysa kapanış fiyatları yazılır; ertesi günün tavan/tabanı buradan hesaplanır.
+    await Promise.allSettled(this.sources.map((source) => this.marketClose.recordIfSessionEnded(source)));
   }
 
   private schedule(delayMs: number): void {

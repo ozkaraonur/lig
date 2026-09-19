@@ -155,7 +155,7 @@ describe('GET /auth/me', () => {
       platform: {
         name: 'Test Platform',
         realTradeUrl: 'https://platform.test/trade',
-        branding: { primaryColor: '#c6f24e', logoUrl: null },
+        branding: { primaryColor: '#c6f24e', logoUrl: null, themeMode: 'dark' },
       },
     });
   });

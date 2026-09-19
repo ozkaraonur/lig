@@ -1,3 +1,4 @@
+import { type AssetClass } from '@lig/shared';
 import { type LeagueStatus, type LeagueType, type OrderSide } from '@lig/shared';
 import { type OutboxEvent } from '../outbox/outbox';
 
@@ -56,6 +57,8 @@ export interface TradingAsset {
   id: string;
   symbol: string;
   name: string;
+  /** Hisse varlıklarında emir yalnızca seans saatinde kabul edilir (Faz 2, 7. adım). */
+  assetClass: AssetClass;
 }
 
 /** Tek bir veritabanı transaction'ı içinde yapılabilen işlemler. */

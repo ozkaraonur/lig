@@ -9,6 +9,8 @@ import {
   type MeResponse,
   type OrderView,
   type PortfolioView,
+  type LeaguePricesResponse,
+  type MarketStatus,
 } from '@lig/shared';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -20,6 +22,7 @@ import { BrandingStyle } from '../../branding';
 import { RealAccountLink } from '../../real-account-link';
 import { VirtualMoneyNotice } from '../../virtual-money-notice';
 import { PortfolioSection } from './portfolio-section';
+import { MarketNotice } from './market-notice';
 import { TradePanel } from './trade-panel';
 
 /** Fiyatların yenilenme aralığı. API fiyatı saniyede bir alır. */
@@ -39,6 +42,7 @@ export default function LeaguePage() {
   const leagueId = encodeURIComponent(params.leagueId);
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [prices, setPrices] = useState<LeagueAssetPrice[]>([]);
+  const [market, setMarket] = useState<MarketStatus | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioView | null>(null);
   const [orders, setOrders] = useState<OrderView[]>([]);
   const [joining, setJoining] = useState(false);
@@ -56,6 +60,10 @@ export default function LeaguePage() {
       const { league } = await apiFetch<{ league: LeagueDetail }>(`/leagues/${leagueId}`);
       setState({ kind: 'ready', league });
       setPrices(league.assets);
+      // Seans durumu sunucudan gelir: oyuncunun saati yanlış olsa da ekran doğru olur.
+      apiFetch<LeaguePricesResponse>(`/leagues/${leagueId}/prices`)
+        .then((res) => setMarket(res.market))
+        .catch(() => undefined);
     } catch (e) {
       const status = e instanceof ApiRequestError ? e.status : 0;
       const notFound = status === 400 || status === 404;
@@ -85,8 +93,11 @@ export default function LeaguePage() {
   useEffect(() => {
     if (state.kind !== 'ready') return;
     const timer = setInterval(() => {
-      apiFetch<{ prices: LeagueAssetPrice[] }>(`/leagues/${leagueId}/prices`)
-        .then((res) => setPrices(res.prices))
+      apiFetch<LeaguePricesResponse>(`/leagues/${leagueId}/prices`)
+        .then((res) => {
+          setPrices(res.prices);
+          setMarket(res.market);
+        })
         .catch(() => undefined);
     }, PRICE_REFRESH_MS);
     return () => clearInterval(timer);
@@ -133,6 +144,9 @@ export default function LeaguePage() {
 
   const { league } = state;
   const assetNames = new Map(league.assets.map((a) => [a.assetId, a.name]));
+  const assetSectors = new Map(league.assets.map((a) => [a.assetId, a.sector]));
+  // Seans kapalıyken fiyat kasten donar; "güncel değil" yerine "son kapanış" yazılır.
+  const frozen = Boolean(market && !market.open);
 
   return (
     <main>
@@ -157,7 +171,9 @@ export default function LeaguePage() {
               league.phase === 'running' && (
                 <>
                   <h2>İşlem yap</h2>
+                  {market && !market.open && <MarketNotice market={market} />}
                   <TradePanel
+                    disabled={Boolean(market && !market.open)}
                     leagueId={leagueId}
                     assets={league.assets}
                     prices={prices}
@@ -217,10 +233,13 @@ export default function LeaguePage() {
             <tr key={p.assetId}>
               <td>
                 <strong>{p.symbol}</strong> <span className="muted">{assetNames.get(p.assetId)}</span>
+                {assetSectors.get(p.assetId) && (
+                  <span className="badge sector">{assetSectors.get(p.assetId)}</span>
+                )}
               </td>
-              <td className={`num ${p.stale ? 'stale' : ''}`}>
+              <td className={`num ${p.stale && !frozen ? 'stale' : ''}`}>
                 {p.price ? formatDecimalTr(p.price) : '—'}
-                {p.stale && <span className="muted"> (güncel değil)</span>}
+                {p.stale && <span className="muted">{frozen ? ' (son kapanış)' : ' (güncel değil)'}</span>}
               </td>
             </tr>
           ))}

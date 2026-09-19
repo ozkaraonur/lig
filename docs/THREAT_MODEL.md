@@ -305,3 +305,29 @@
 - Tıklama sayısı niyeti değil hareketi ölçer: aynı oyuncu butona tekrar tekrar dokunabilir. Bu yüzden panoda hem dokunuş hem farklı oyuncu sayısı var; pilotta dokunuşun günde bir kez sayılması değerlendirilebilir.
 - `real_trade_clicks` davranış verisidir. KVKK açısından takma kimlikle tutuluyor ama saklama süresi belirlenmeli; denetim kaydındaki IP sorusuyla birlikte hukukçuya gidecek.
 - Metrikler canlı sorgulanıyor. Çok büyük platformda sorgu maliyeti artar; ölçüm eşiği geçilirse günlük özet tablosuna geçilecek (K-025).
+
+## Pay piyasası kuralları ve ikinci müşteri: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `packages/shared/src/market.ts`, `apps/api/src/prices/`, `apps/api/src/orders/orders.service.ts`, `apps/mock-platform/src/main.ts`. **Testler:** `market.test.ts` (takvim ve limitler), `price-ingest.service.test.ts`, `market-close.service.test.ts`, `market-close.int.test.ts` (gerçek PostgreSQL), `orders.e2e.test.ts`. Tarayıcıda: aracı kurum ekranında açık tema, BIST fiyatları ve sektörler, seans içinde emir, seans kapalıyken uyarı ve kilitli panel.
+
+| Saldırı ya da hata                                                | Sonuç                                                    | Test |
+| ----------------------------------------------------------------- | -------------------------------------------------------- | ---- |
+| Seans dışında hisse emri (öğle arası, kapanış sonrası, tatil)     | 409 `MARKET_CLOSED`, mesajda bir sonraki açılış          | ✓    |
+| Arayüzü atlayıp doğrudan API'ye seans dışı emir                   | Aynı 409; kural sunucuda                                 | ✓    |
+| Seans dışında aynı ligdeki kripto varlığa emir                    | Kabul edilir; kural yalnızca hisselere                   | ✓    |
+| Platform akışının seans dışında fiyat göndermesi                  | Saklanmaz, son kapanış durur                             | ✓    |
+| Akışın günlük %10'dan fazla oynayan fiyat göndermesi              | Tavana/tabana çekilir                                    | ✓    |
+| Akışın bozuk fiyatı (0, negatif, metin)                           | Reddedilir; limit hesabı da geçersiz referansı yok sayar | ✓    |
+| Öğle arasında dünün kapanışı olarak bugünün fiyatının yazılması   | Yazılmaz; yalnızca o günün kendi kapanışı yazılır        | ✓    |
+| Aynı gün için kapanışın ikinci kez yazılması                      | Tarihi eski olmayan satır güncellenmez                   | ✓    |
+| Başka platformun sembolüne kapanış yazma                          | 0 satır                                                  | ✓    |
+| Kripto varlığa kapanış/limit uygulanması                          | Uygulanmaz                                               | ✓    |
+| Takvimin kapsamadığı yıl                                          | Hafta sonu kuralı + `calendarKnown: false`               | ✓    |
+| İki müşterinin verisinin karışması (varlık, lig, fiyat, yönetici) | Her sorgu tenant'a bağlı                                 | ✓    |
+
+**Bilinen açık konular:**
+
+- Tatil takvimi kodda ve elle güncellenir. 2027 listesi girilmezse o yıl yalnızca hafta sonları kapalı sayılır; `calendarKnown` bunu bildirir ama kimse bakmazsa fark edilmez. Pilot öncesi: takvimin veri sağlayıcıdan gelmesi ya da yılda bir hatırlatma.
+- Yarım gün seansının kapanış saati sabit 13:00 modellendi; Borsa İstanbul duyurusu farklı bir saat verirse liste güncellenmeli.
+- Sahte Aracı Kurum'un fiyatları uydurmadır ve gerçek BIST verisi değildir. Gerçek veri lisans gerektirir (Faz 3.5).
+- Sunucu saati yanlışsa seans kuralı da yanlış olur. Pilotta NTP ve saat sapması izleme gerekir.

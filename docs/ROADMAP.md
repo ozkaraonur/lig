@@ -47,9 +47,9 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 - [x] Marka ayarları: platform adı, ana renk, logo; yazı renkleri kontrasta göre hesaplanır (FR-22, K-024)
 - [x] `check`/`dev` shared paketini önce derler (K-026)
 - [x] Metrikler: dönüşüm hunisi, lig bazlı tablo, gerçek işlem yapanların lig modülüyle ilişkisi (FR-23, FR-31, K-025)
-- [ ] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), sektör bilgisi, açık tema
-- [ ] Seans saati kuralı: hisse varlıklarında seans dışında emir verilmez
-- [ ] Tavan/taban kuralı: BIST hisselerinde günlük ±%10 fiyat sınırı
+- [x] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), sektör bilgisi, açık tema (K-027)
+- [x] Seans saati kuralı: hisse varlıklarında seans dışında emir verilmez, fiyat son kapanışta donar (K-027)
+- [x] Tavan/taban kuralı: BIST hisselerinde önceki kapanışa göre ±%10 (K-027)
 - [ ] Demo için gerçek kripto fiyat modu (kullanım şartları uygun, herkese açık bir borsa fiyat ucu)
 
 ## Faz 3 · Sosyal ve oyunlaştırma, tam sürüm özellikleri

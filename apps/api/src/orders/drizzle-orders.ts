@@ -87,7 +87,12 @@ class DrizzleOrderTransaction implements OrderTransaction {
 
   async findAsset(tenantId: string, assetId: string): Promise<TradingAsset | null> {
     const [row] = await this.tx
-      .select({ id: assets.id, symbol: assets.symbol, name: assets.name })
+      .select({
+        id: assets.id,
+        symbol: assets.symbol,
+        name: assets.name,
+        assetClass: assets.assetClass,
+      })
       .from(assets)
       .where(and(eq(assets.id, assetId), eq(assets.tenantId, tenantId)))
       .limit(1);

@@ -38,7 +38,13 @@ export class DrizzleLeagueRepository implements LeagueRepository {
   async findAssets(tenantId: string, assetIds: string[]): Promise<AssetRecord[]> {
     if (assetIds.length === 0) return [];
     return this.db
-      .select({ id: assets.id, symbol: assets.symbol, name: assets.name, assetClass: assets.assetClass })
+      .select({
+        id: assets.id,
+        symbol: assets.symbol,
+        name: assets.name,
+        assetClass: assets.assetClass,
+        sector: assets.sector,
+      })
       .from(assets)
       .where(and(eq(assets.tenantId, tenantId), inArray(assets.id, assetIds)));
   }

@@ -12,6 +12,7 @@ next-env.d.ts
 *.pem
 *.key
 apps/mock-platform/keys/
+apps/mock-platform/keys-broker/
 
 # İşletim sistemi ve editör
 .DS_Store

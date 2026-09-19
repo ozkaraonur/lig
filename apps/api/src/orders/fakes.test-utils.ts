@@ -92,7 +92,7 @@ export class InMemoryOrders implements OrderUnitOfWork, PortfolioReader {
       },
       findAsset: async (tenantId, assetId): Promise<TradingAsset | null> => {
         const a = leagues.assets.find((x) => x.id === assetId && x.tenantId === tenantId);
-        return a ? { id: a.id, symbol: a.symbol, name: a.name } : null;
+        return a ? { id: a.id, symbol: a.symbol, name: a.name, assetClass: a.assetClass } : null;
       },
       findPosition: async (membershipId, assetId) => {
         const p = this.positions.find((x) => x.membershipId === membershipId && x.assetId === assetId);

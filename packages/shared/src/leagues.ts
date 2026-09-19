@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { type AssetClass, type LeagueStatus, type LeagueType, MAX_PRICE_AGE_MS } from './domain';
+import { type MarketStatus } from './market';
 
 /**
  * Oyuncunun gördüğü lig evresi. Veritabanındaki `status` yöneticinin kararıdır (taslak, yayında, kapandı);
@@ -80,9 +81,17 @@ export interface LeagueAssetPrice {
   stale: boolean;
 }
 
+/** GET /leagues/:id/prices yanıtı. Ligde hisse varlığı yoksa `market` null. */
+export interface LeaguePricesResponse {
+  prices: LeagueAssetPrice[];
+  market: MarketStatus | null;
+}
+
 export interface LeagueAsset extends LeagueAssetPrice {
   name: string;
   assetClass: AssetClass;
+  /** Hisse varlıklarında sektör; kripto varlıklarda null. */
+  sector: string | null;
 }
 
 export interface LeagueMembership {

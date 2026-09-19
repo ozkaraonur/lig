@@ -20,12 +20,14 @@ interface Props {
   cash: string;
   positions: PortfolioPosition[];
   onFilled: () => void;
+  /** Seans kapalıyken hisse ligi işlem kabul etmez (7. adım); panel kilitlenir. */
+  disabled?: boolean;
 }
 
 type Feedback = { kind: 'ok' | 'error'; message: string } | null;
 
 /** FR-04: al/sat. Fiyat ve miktarı sunucu belirler; ekrandaki fiyat yalnızca bilgi içindir. */
-export function TradePanel({ leagueId, assets, prices, cash, positions, onFilled }: Props) {
+export function TradePanel({ leagueId, assets, prices, cash, positions, onFilled, disabled = false }: Props) {
   const [assetId, setAssetId] = useState(assets[0]?.assetId ?? '');
   const [side, setSide] = useState<OrderSide>('buy');
   const [amount, setAmount] = useState('');
@@ -40,7 +42,7 @@ export function TradePanel({ leagueId, assets, prices, cash, positions, onFilled
   const price = prices.find((p) => p.assetId === assetId);
   const position = positions.find((p) => p.assetId === assetId);
   const symbol = assets.find((a) => a.assetId === assetId)?.symbol ?? '';
-  const tradable = !!price?.price && !price.stale;
+  const tradable = !!price?.price && !price.stale && !disabled;
 
   const resetKey = () => {
     pendingKey.current = null;
@@ -119,9 +121,9 @@ export function TradePanel({ leagueId, assets, prices, cash, positions, onFilled
 
       <div className="card-row muted">
         <span>Fiyat</span>
-        <span className={price?.stale ? 'stale' : ''}>
+        <span className={price?.stale && !disabled ? 'stale' : ''}>
           {price?.price ? `${formatDecimalTr(price.price)} ₺` : '—'}
-          {price?.stale && ' (güncel değil)'}
+          {price?.stale && (disabled ? ' (son kapanış)' : ' (güncel değil)')}
         </span>
       </div>
       <div className="card-row muted">
@@ -163,7 +165,7 @@ export function TradePanel({ leagueId, assets, prices, cash, positions, onFilled
           Tümünü sat
         </button>
       )}
-      {!tradable && <p className="muted">Güncel fiyat gelene kadar emir verilemez.</p>}
+      {!tradable && !disabled && <p className="muted">Güncel fiyat gelene kadar emir verilemez.</p>}
       {feedback && (
         <p
           role={feedback.kind === 'error' ? 'alert' : 'status'}

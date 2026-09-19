@@ -24,6 +24,8 @@ export interface AssetRecord {
   symbol: string;
   name: string;
   assetClass: AssetClass;
+  /** Hisse varlıklarında sektör (ör. "Bankacılık"). */
+  sector: string | null;
 }
 
 export interface MembershipRecord {

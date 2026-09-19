@@ -8,7 +8,7 @@ export const LOGIN_PAGE_HTML = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sahte Platform</title>
+  <title>__BRAND_NAME__</title>
   <style>
     body { margin: 0; font-family: system-ui, sans-serif; background: #0d0f14; color: #eef1f6; }
     main { max-width: 420px; margin: 48px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -24,8 +24,8 @@ export const LOGIN_PAGE_HTML = `<!doctype html>
 </head>
 <body>
   <main data-web-url="__WEB_URL__">
-    <h1>Sahte Platform</h1>
-    <p>Gerçek bir kripto platformunun yerine geçer. Oyuncu kimliği seç ve lige gir.</p>
+    <h1>__BRAND_NAME__</h1>
+    <p>__BRAND_INTRO__</p>
     <form id="login">
       <label>Oyuncu kimliği <input name="externalId" value="oyuncu-1" required pattern="[A-Za-z0-9_.:\\-]{1,128}"></label>
       <label>Görünen ad <input name="displayName" value="Deniz" maxlength="40"></label>

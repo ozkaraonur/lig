@@ -3,11 +3,26 @@
   --surface: #161a22;
   --text: #eef1f6;
   --muted: #8d96a8;
+  /* Ayırıcı çizgiler ve nötr rozet zemini; açık temada birlikte değişir. */
+  --line: #232937;
+  --line-strong: #2a3140;
+  --chip: #2a3040;
   --accent: #c6f24e;
   /* Ana rengin üstündeki yazı rengi; marka rengi değişince (FR-22) birlikte güncellenir. */
   --accent-text: #12151c;
   /* Koyu zemin üstünde marka rengiyle yazılan yazı: koyu marka renklerinde açılmış tonu kullanılır. */
   --accent-readable: #c6f24e;
+}
+
+/* Açık tema (FR-22, tema modu). Marka rengi ve ondan hesaplanan yazı renkleri JavaScript ile yazılır. */
+:root[data-theme='light'] {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --text: #12151c;
+  --muted: #5b6577;
+  --line: #e3e6ec;
+  --line-strong: #d5d9e2;
+  --chip: #e9ecf2;
 }
 
 * {
@@ -115,7 +130,7 @@ a.card:hover {
   padding: 3px 8px;
   border-radius: 999px;
   white-space: nowrap;
-  background: #2a3040;
+  background: var(--chip);
   color: var(--muted);
 }
 
@@ -163,7 +178,7 @@ button.link {
 .prices th,
 .prices td {
   padding: 10px 4px;
-  border-bottom: 1px solid #232937;
+  border-bottom: 1px solid var(--line);
   text-align: left;
 }
 
@@ -209,7 +224,7 @@ select {
   font-size: 1rem;
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid #2a3140;
+  border: 1px solid var(--line-strong);
   background: var(--bg);
   color: var(--text);
 }
@@ -260,7 +275,7 @@ button.link:disabled {
 
 .orders li {
   padding: 10px 0;
-  border-bottom: 1px solid #232937;
+  border-bottom: 1px solid var(--line);
 }
 
 .leaderboard {
@@ -273,7 +288,7 @@ button.link:disabled {
 
 .rank-row {
   padding: 10px 8px;
-  border-bottom: 1px solid #232937;
+  border-bottom: 1px solid var(--line);
   gap: 10px;
 }
 
@@ -338,7 +353,7 @@ a.real-account {
 .progress {
   height: 8px;
   border-radius: 999px;
-  background: #232937;
+  background: var(--line);
   overflow: hidden;
 }
 
@@ -412,7 +427,7 @@ a.real-account {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
-  border-bottom: 1px solid #2a3140;
+  border-bottom: 1px solid var(--line-strong);
   padding-bottom: 8px;
 }
 
@@ -442,7 +457,7 @@ a.real-account {
 .admin-table td {
   text-align: left;
   padding: 8px;
-  border-bottom: 1px solid #222836;
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
 
@@ -517,7 +532,7 @@ button.danger {
 }
 
 fieldset.assets {
-  border: 1px solid #2a3140;
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 10px 12px;
   display: flex;
@@ -563,7 +578,7 @@ select:disabled {
 
 .notice-bar {
   font-size: 0.8rem;
-  border-top: 1px solid #2a3140;
+  border-top: 1px solid var(--line-strong);
   padding-top: 10px;
   margin-top: 8px;
 }
@@ -663,4 +678,10 @@ input[type='color'] {
 
 .admin-table th.num {
   text-align: right;
+}
+
+/* Hisse varlığının sektörü (7. adım). */
+.badge.sector {
+  margin-left: 6px;
+  font-weight: 600;
 }

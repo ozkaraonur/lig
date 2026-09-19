@@ -252,7 +252,7 @@ describe('branding (FR-22)', () => {
     const directory = new DrizzleTenantDirectory(db);
 
     const initial = (await call('GET', '/admin/branding', viewer)).json<BrandingView>();
-    expect(initial).toMatchObject({ primaryColor: '#c6f24e', logoUrl: null });
+    expect(initial).toMatchObject({ primaryColor: '#c6f24e', logoUrl: null, themeMode: 'dark' });
 
     expect((await call('PATCH', '/admin/branding', viewer, { primaryColor: '#123456' })).statusCode).toBe(
       403,
@@ -265,6 +265,7 @@ describe('branding (FR-22)', () => {
       { name: 'A' },
       { name: '<script>x</script>' },
       { theme: {} },
+      { themeMode: 'sepia' },
       {},
     ]) {
       expect((await call('PATCH', '/admin/branding', editor, body)).statusCode, JSON.stringify(body)).toBe(
@@ -282,12 +283,18 @@ describe('branding (FR-22)', () => {
       name: 'Kripto Borsam',
       primaryColor: '#1d3f8f',
       logoUrl: 'https://platform.test/logo.png',
+      themeMode: 'dark',
     });
 
     expect(await directory.findPublicInfo(p.tenantId)).toMatchObject({
       name: 'Kripto Borsam',
       branding: { primaryColor: '#1d3f8f', logoUrl: 'https://platform.test/logo.png' },
     });
+
+    // Tema modu: açık temaya geçiş oyuncu ekranına gider.
+    const themed = await call('PATCH', '/admin/branding', editor, { themeMode: 'light' });
+    expect(themed.statusCode).toBe(200);
+    expect((await directory.findPublicInfo(p.tenantId))?.branding.themeMode).toBe('light');
 
     // Logoyu kaldırmak.
     await call('PATCH', '/admin/branding', editor, { logoUrl: null });
@@ -296,7 +303,9 @@ describe('branding (FR-22)', () => {
     // Aynı değeri tekrar göndermek kayıt üretmez.
     await call('PATCH', '/admin/branding', editor, { name: 'Kripto Borsam' });
     const events = await auditActions(p.tenantId);
-    expect(events.map((e) => e.action)).toEqual(['branding.changed', 'branding.changed']);
+    // Ad+renk+logo, tema modu, logo kaldırma: üç değişiklik, üç kayıt. Aynı değeri tekrar göndermek kayıt üretmez.
+    expect(events.map((e) => e.action)).toEqual(['branding.changed', 'branding.changed', 'branding.changed']);
+    expect(events[1]?.metadata).toMatchObject({ themeModeFrom: 'dark', themeModeTo: 'light' });
     expect(events[0]?.metadata).toMatchObject({
       nameTo: 'Kripto Borsam',
       primaryColorFrom: '#c6f24e',

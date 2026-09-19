@@ -36,14 +36,15 @@ Fiyatlar seed'den sonra en geç 30 saniye içinde akmaya başlar. Sahte platform
 
 Çalıştığını kontrol et:
 
-| Servis         | Adres                        |
-| -------------- | ---------------------------- |
-| API sağlık     | http://localhost:4000/health |
-| Oyuncu ekranı  | http://localhost:3000        |
-| Yönetim paneli | http://localhost:3000/admin  |
-| Sahte platform | http://localhost:4100        |
+| Servis            | Adres                        |
+| ----------------- | ---------------------------- |
+| API sağlık        | http://localhost:4000/health |
+| Oyuncu ekranı     | http://localhost:3000        |
+| Yönetim paneli    | http://localhost:3000/admin  |
+| Sahte platform    | http://localhost:4100        |
+| Sahte aracı kurum | http://localhost:4200        |
 
-**Yönetim paneli girişi (yalnızca yerel geliştirme):** `yonetici@sahte-platform.test` / `gelistirme-yonetici-parolasi`. İlk girişte telefondaki doğrulama uygulamasıyla (Google Authenticator, Microsoft Authenticator, Bitwarden) QR kod okutulur. Telefonu değiştirirsen: `npm run admin:reset-mfa -- --email yonetici@sahte-platform.test`.
+**Yönetim paneli girişi (yalnızca yerel geliştirme):** kripto platformu için `yonetici@sahte-platform.test`, aracı kurum için `yonetici@sahte-araci-kurum.test`; ikisinin de parolası `gelistirme-yonetici-parolasi`. İlk girişte telefondaki doğrulama uygulamasıyla (Google Authenticator, Microsoft Authenticator, Bitwarden) QR kod okutulur. Telefonu değiştirirsen: `npm run admin:reset-mfa -- --email yonetici@sahte-platform.test`.
 
 Durdurmak için terminalde `Ctrl + C`, altyapıyı kapatmak için `npm run infra:down`.
 

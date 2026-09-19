@@ -8,6 +8,7 @@ export * from './domain';
 export * from './errors';
 export * from './format';
 export * from './leagues';
+export * from './market';
 export * from './metrics';
 export * from './orders';
 export * from './quests';

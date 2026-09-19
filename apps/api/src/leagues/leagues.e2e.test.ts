@@ -204,6 +204,24 @@ describe('GET /leagues/:id/prices', () => {
         expect.objectContaining({ symbol: 'ETH', price: null, stale: true }),
         expect.objectContaining({ symbol: 'BTC', price: null, stale: true }),
       ],
+      // Ligde hisse varlığı yok: seans durumu gönderilmez (kripto 7/24 açık).
+      market: null,
+    });
+  });
+
+  it('hisse varlığı olan ligde seans durumunu da döner', async () => {
+    const thyao = repo.addAsset(TENANT_A, 'THYAO', 'equity');
+    const equityLeague = repo.addLeague({
+      tenantId: TENANT_A,
+      startsAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000),
+      endsAt: new Date(NOW.getTime() + 24 * 60 * 60 * 1000),
+      startingCash: '100000.00',
+      assetIds: [thyao.id],
+    });
+    const res = await get(`/leagues/${equityLeague.id}/prices`);
+    expect(res.statusCode).toBe(200);
+    expect(res.json<{ market: { phase: string } | null }>().market).toMatchObject({
+      phase: expect.any(String),
     });
   });
 });

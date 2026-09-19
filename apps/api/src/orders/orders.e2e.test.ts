@@ -468,3 +468,72 @@ describe('rate limiting (T9)', () => {
     expect(orders.orders).toHaveLength(RATE_LIMITS.orders.limit);
   });
 });
+
+/** Pay piyasası seans saati (Faz 2, 7. adım). Kripto varlıklarda bu kural yoktur. */
+describe('hisse varlıklarında seans saati', () => {
+  const OPEN = new Date('2026-09-22T11:00:00+03:00').getTime();
+  const LUNCH = new Date('2026-09-22T13:30:00+03:00').getTime();
+  const AFTER_CLOSE = new Date('2026-09-22T18:30:00+03:00').getTime();
+  const HOLIDAY = new Date('2026-10-29T11:00:00+03:00').getTime();
+  let equityLeague: StoredLeague;
+  let thyao: { id: string };
+
+  beforeEach(async () => {
+    thyao = repo.addAsset(TENANT_A, 'THYAO', 'equity');
+    equityLeague = repo.addLeague({
+      tenantId: TENANT_A,
+      // Lig penceresi tatil testini de kapsayacak kadar geniş.
+      startsAt: new Date(OPEN - 3 * day),
+      endsAt: new Date(HOLIDAY + 7 * day),
+      startingCash: '100000.00',
+      assetIds: [thyao.id, btc.id],
+    });
+    member(equityLeague, playerA);
+  });
+
+  const buyEquity = () => ({ assetId: thyao.id, side: 'buy', amount: '1000', idempotencyKey: randomUUID() });
+
+  it('seans açıkken emir kabul edilir', async () => {
+    now = OPEN;
+    await setPrice('THYAO', '100');
+    const res = await order(buyEquity(), { leagueId: equityLeague.id });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it.each([
+    ['öğle arasında', () => LUNCH, 'Öğle arası'],
+    ['seans kapandıktan sonra', () => AFTER_CLOSE, 'Seans kapandı'],
+    ['resmî tatilde', () => HOLIDAY, 'Resmî tatil'],
+  ])('%s emir reddedilir', async (_label, at, phase) => {
+    now = at();
+    await setPrice('THYAO', '100');
+    const res = await order(buyEquity(), { leagueId: equityLeague.id });
+    expectError(res, 409, 'MARKET_CLOSED');
+    expect(res.json<{ message: string }>().message).toContain(phase);
+    expect(res.json<{ message: string }>().message).toContain('seans');
+  });
+
+  it('seans kapalıyken kripto emri kabul edilir', async () => {
+    now = AFTER_CLOSE;
+    await setPrice('BTC', '1000');
+    const res = await order(
+      { assetId: btc.id, side: 'buy', amount: '1000', idempotencyKey: randomUUID() },
+      { leagueId: equityLeague.id },
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('seans kapalıyken satış da yapılamaz: portföy seans dışında dondurulur', async () => {
+    now = OPEN;
+    await setPrice('THYAO', '100');
+    expect((await order(buyEquity(), { leagueId: equityLeague.id })).statusCode).toBe(201);
+
+    now = AFTER_CLOSE;
+    await setPrice('THYAO', '100');
+    const res = await order(
+      { assetId: thyao.id, side: 'sell', all: true, idempotencyKey: randomUUID() },
+      { leagueId: equityLeague.id },
+    );
+    expectError(res, 409, 'MARKET_CLOSED');
+  });
+});

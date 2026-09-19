@@ -1,5 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type BrandingView, DEFAULT_PRIMARY_COLOR, type QuestPeriod, type QuestTemplate } from '@lig/shared';
+import {
+  type BrandingView,
+  DEFAULT_PRIMARY_COLOR,
+  DEFAULT_THEME_MODE,
+  type QuestPeriod,
+  type QuestTemplate,
+  THEME_MODES,
+  type ThemeMode,
+} from '@lig/shared';
 import { and, asc, count, eq, like, sql } from 'drizzle-orm';
 import { type AuditEntry, recordAudit, type Tx } from '../audit/audit-log';
 import { DB, type Database } from '../db/db.module';
@@ -131,6 +139,7 @@ export class DrizzleAdminQuestRepository implements AdminQuestRepository {
 interface StoredTheme {
   primaryColor?: string;
   logoUrl?: string | null;
+  themeMode?: string;
 }
 
 function toBranding(name: string, theme: unknown): BrandingView {
@@ -139,7 +148,13 @@ function toBranding(name: string, theme: unknown): BrandingView {
     name,
     primaryColor: stored.primaryColor ?? DEFAULT_PRIMARY_COLOR,
     logoUrl: stored.logoUrl ?? null,
+    // Kayıt elle bozulsa bile bilinmeyen bir mod ekrana gitmez.
+    themeMode: isThemeMode(stored.themeMode) ? stored.themeMode : DEFAULT_THEME_MODE,
   };
+}
+
+function isThemeMode(value: unknown): value is ThemeMode {
+  return typeof value === 'string' && (THEME_MODES as readonly string[]).includes(value);
 }
 
 @Injectable()
@@ -173,7 +188,14 @@ export class DrizzleBrandingRepository implements BrandingRepository {
       if (!entry) return before;
       await tx
         .update(tenants)
-        .set({ name: after.name, theme: { primaryColor: after.primaryColor, logoUrl: after.logoUrl } })
+        .set({
+          name: after.name,
+          theme: {
+            primaryColor: after.primaryColor,
+            logoUrl: after.logoUrl,
+            themeMode: after.themeMode,
+          },
+        })
         .where(eq(tenants.id, tenantId));
       await recordAudit(tx, entry);
       return after;

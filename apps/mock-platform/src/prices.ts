@@ -20,6 +20,42 @@ export const DEFAULT_MARKETS: MarketConfig[] = [
   { symbol: 'DOGE', start: 9, decimals: 5, volatility: 0.002 },
 ];
 
+/**
+ * Sahte Aracı Kurum'un BIST pay piyasası listesi (Faz 2, 7. adım). Fiyatlar tamamen uydurmadır ve
+ * gerçek BIST verisi değildir; sektör bilgisi görev ve filtre denemeleri için vardır.
+ */
+export const BIST_MARKETS: (MarketConfig & { name: string; sector: string })[] = [
+  {
+    symbol: 'THYAO',
+    name: 'Türk Hava Yolları',
+    sector: 'Ulaştırma',
+    start: 320,
+    decimals: 2,
+    volatility: 0.0012,
+  },
+  { symbol: 'GARAN', name: 'Garanti BBVA', sector: 'Bankacılık', start: 135, decimals: 2, volatility: 0.001 },
+  { symbol: 'AKBNK', name: 'Akbank', sector: 'Bankacılık', start: 72, decimals: 2, volatility: 0.001 },
+  { symbol: 'ASELS', name: 'Aselsan', sector: 'Savunma', start: 85, decimals: 2, volatility: 0.0014 },
+  {
+    symbol: 'EREGL',
+    name: 'Ereğli Demir Çelik',
+    sector: 'Metal',
+    start: 28,
+    decimals: 2,
+    volatility: 0.0012,
+  },
+  {
+    symbol: 'BIMAS',
+    name: 'BİM Mağazalar',
+    sector: 'Perakende',
+    start: 520,
+    decimals: 2,
+    volatility: 0.0009,
+  },
+  { symbol: 'TUPRS', name: 'Tüpraş', sector: 'Enerji', start: 175, decimals: 2, volatility: 0.0013 },
+  { symbol: 'SISE', name: 'Şişecam', sector: 'Sanayi', start: 45, decimals: 2, volatility: 0.0011 },
+];
+
 interface MarketState extends MarketConfig {
   price: number;
   timestamp: number;

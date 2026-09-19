@@ -1,4 +1,5 @@
 import {
+  type AssetCloseRepository,
   type PriceFeedClient,
   type PriceFeedDirectory,
   type PriceFeedSource,
@@ -53,5 +54,26 @@ export class FakeFeedDirectory implements PriceFeedDirectory {
   async listSources(): Promise<PriceFeedSource[]> {
     this.calls++;
     return this.sources;
+  }
+}
+
+/** Kapanış yazımlarını bellekte tutar: sembol → { tarih, kapanış }. */
+export class FakeAssetCloseRepository implements AssetCloseRepository {
+  readonly closes = new Map<string, { sessionDate: string; close: string }>();
+
+  async saveCloses(
+    tenantId: string,
+    sessionDate: string,
+    closes: readonly { symbol: string; close: string }[],
+  ): Promise<number> {
+    let saved = 0;
+    for (const { symbol, close } of closes) {
+      const key = `${tenantId}:${symbol}`;
+      const current = this.closes.get(key);
+      if (current && current.sessionDate >= sessionDate) continue;
+      this.closes.set(key, { sessionDate, close });
+      saved += 1;
+    }
+    return saved;
   }
 }

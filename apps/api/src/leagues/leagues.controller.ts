@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
 import {
   type JoinLeagueResponse,
-  type LeagueAssetPrice,
+  type LeaguePricesResponse,
   type LeagueDetail,
   leagueIdParam,
   type LeagueSummary,
@@ -43,9 +43,9 @@ export class LeaguesController {
     @CurrentSession() session: AuthenticatedSession,
     @Param('leagueId', new ZodValidationPipe(leagueIdParam)) leagueId: string,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<{ prices: LeagueAssetPrice[] }> {
+  ): Promise<LeaguePricesResponse> {
     void reply.header('cache-control', 'no-store');
-    return { prices: await this.leagues.latestPrices(session, leagueId) };
+    return this.leagues.latestPrices(session, leagueId);
   }
 
   /** İlk katılımda 201, zaten üyeyse 200 ve mevcut üyelik. Gövde almaz: bakiye istemciden gelmez. */

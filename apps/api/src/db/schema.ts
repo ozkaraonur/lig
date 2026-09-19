@@ -23,6 +23,7 @@ import {
   bigint,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -131,6 +132,14 @@ export const assets = pgTable(
     symbol: text().notNull(),
     name: text().notNull(),
     assetClass: assetClass().notNull(),
+    /** Hisse varlıklarında sektör (ör. "Bankacılık"); kripto varlıklarda boş. */
+    sector: text(),
+    /**
+     * Tavan/taban hesabında kullanılan referans: son seans gününün kapanış fiyatı ve o günün tarihi
+     * (Türkiye takvimi). Yeni varlıkta boştur, ilk seans kapanışında dolar.
+     */
+    referenceClose: quantity(),
+    referenceCloseDate: date(),
   },
   (t) => [unique().on(t.tenantId, t.symbol)],
 );

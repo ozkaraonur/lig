@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   leaguePhase,
+  MARKET_PHASE_LABELS,
+  marketStatus,
   type OrderView,
   type PlaceOrderRequest,
   type PlaceOrderResponse,
@@ -36,7 +38,26 @@ export const orderErrors = {
   orderTooSmall: () => new AppError('ORDER_TOO_SMALL', 422, 'Tutar bu fiyatta işlem yapmak için çok küçük.'),
   idempotencyKeyReused: () =>
     new AppError('IDEMPOTENCY_KEY_REUSED', 409, 'Bu emir anahtarı farklı bir emir için kullanılmış.'),
+  marketClosed: (phase: string, opensAt: string | null) =>
+    new AppError(
+      'MARKET_CLOSED',
+      409,
+      `${phase}. Hisse emirleri yalnızca seans saatinde verilebilir${
+        opensAt ? `; seans ${formatOpening(opensAt)} açılıyor` : ''
+      }.`,
+    ),
 };
+
+/** Hata mesajındaki açılış saati Türkiye saatiyle yazılır. */
+function formatOpening(iso: string): string {
+  return new Date(iso).toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 /**
  * İsteğin özeti. Aynı idempotency anahtarı aynı istekle gelirse önceki sonuç döner; farklı bir istekle
@@ -93,6 +114,13 @@ export class OrdersService {
       if (!league.assetIds.includes(req.assetId)) throw orderErrors.assetNotInLeague();
       const asset = await tx.findAsset(session.tenantId, req.assetId);
       if (!asset) throw orderErrors.assetNotInLeague();
+      if (asset.assetClass === 'equity') {
+        // Pay piyasası seans saati (7. adım). Kripto varlıklar 7/24 açık.
+        const market = marketStatus(new Date(this.clock()));
+        if (!market.open) {
+          throw orderErrors.marketClosed(MARKET_PHASE_LABELS[market.phase], market.opensAt);
+        }
+      }
 
       const [quote] = await this.prices.latestFor(session.tenantId, [asset]);
       if (!quote?.price || quote.stale) throw orderErrors.priceStale();

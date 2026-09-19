@@ -147,6 +147,18 @@ Web: `/admin/leagues`, `/admin/leagues/new`, `/admin/leagues/[id]`, `/admin/comp
 
 Web: `/admin/quests` (tabloda hedef ve XP satır içi düzenlenir), `/admin/branding` (renk seçici ve önizleme).
 
+## Pay piyasası: seans ve fiyat limitleri (K-027)
+
+- Kurallar `@lig/shared` içindeki saf fonksiyonlarda: `marketStatus`, `sessionsOn`, `lastSessionClose`, `clampToLimits`. Seans hafta içi 10:00-13:00 ve 14:00-18:00 (TR), bayram arifesinde yalnızca sabah; tatil listesi `MARKET_HOLIDAYS`.
+- Emir: hisse varlığında seans kapalıysa 409 `MARKET_CLOSED`. Kripto varlıklar etkilenmez.
+- Fiyat akışı: seans kapalıyken hisse fiyatı saklanmaz (`market_closed` sayacı), açıkken fiyat tavan/taban aralığına çekilir. Limit `assets.reference_close` (önceki kapanış) ±%10.
+- Kapanış: `MarketCloseService` seans bittikten sonra o günün son fiyatlarını `reference_close` ve `reference_close_date` alanlarına yazar. Fiyat akışı turuyla birlikte çalışır, ayrı worker yok.
+- `GET /leagues/:id/prices` hisse varlığı olan ligde `market` alanını da döner; oyuncu ekranı seans durumunu sunucudan alır, kendi saatine bakmaz.
+
+## İki sahte müşteri (Faz 2, 7. adım)
+
+`apps/mock-platform` aynı süreçte iki müşteriyi taklit eder: kripto borsası (4100, issuer `mock-platform`, koyu tema) ve aracı kurum (4200, issuer `mock-broker`, BIST hisseleri, açık tema). Her birinin kendi anahtar çifti (`keys/`, `keys-broker/`), webhook anahtarı ve tenant kaydı vardır. `npm run db:seed` ikisini de kurar.
+
 ## Metrikler (FR-23, K-025)
 
 - `GET /admin/metrics?days=7|30|90`: her rol. Sayılar canlı sorgulanır, özet tablosu yok.

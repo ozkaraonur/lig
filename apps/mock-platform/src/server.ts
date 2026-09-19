@@ -25,10 +25,19 @@ export interface MockPlatformOptions {
   prices?: PriceSimulator;
   /** Gerçek işlem bildirimlerini lig API'sine gönderir (FR-31). Verilmezse işlem sayfası devre dışı. */
   webhooks?: WebhookSender;
+  /** Sayfa başlığında görünen müşteri adı; aynı uygulama iki sahte müşteriyi taklit eder. */
+  brandName?: string;
+  /** Giriş sayfasındaki tek cümlelik tanıtım. */
+  brandIntro?: string;
   logger?: boolean;
 }
 
 const tokenRequestBody = z.object({ displayName: displayNameSchema.optional() }).strict();
+
+/** Sayfaya gömülen ad yapılandırmadan gelir; yine de kaçışlanır. */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
 
 /**
  * Gerçek bir kripto platformunun yerine geçen test sunucusu. Faz 1 kapsamı:
@@ -139,7 +148,17 @@ export async function buildServer(options: MockPlatformOptions): Promise<Fastify
         'content-security-policy',
         "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
       )
-      .send(LOGIN_PAGE_HTML.replace('__WEB_URL__', encodeURIComponent(options.webUrl))),
+      .send(
+        LOGIN_PAGE_HTML.replace('__WEB_URL__', encodeURIComponent(options.webUrl))
+          .replaceAll('__BRAND_NAME__', escapeHtml(options.brandName ?? 'Sahte Platform'))
+          .replaceAll(
+            '__BRAND_INTRO__',
+            escapeHtml(
+              options.brandIntro ??
+                'Gerçek bir kripto platformunun yerine geçer. Oyuncu kimliği seç ve lige gir.',
+            ),
+          ),
+      ),
   );
 
   app.get('/login.js', async (_request, reply) =>

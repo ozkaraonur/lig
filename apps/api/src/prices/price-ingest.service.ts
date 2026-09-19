@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { isPriceStale, priceFeedResponse, priceTick } from '@lig/shared';
+import { clampToLimits, isPriceStale, marketStatus, priceFeedResponse, priceTick } from '@lig/shared';
 import { CLOCK_MS, type MsClock } from '../common/clock';
 import { PriceFeedError } from './http-feed.client';
 import {
@@ -14,10 +14,17 @@ import {
 /** Platform saatinin bizden en fazla bu kadar ileride olmasına tolerans gösterilir. */
 export const MAX_FUTURE_SKEW_MS = 2_000;
 
-export type RejectReason = 'invalid' | 'unknown_symbol' | 'future' | 'stale';
+export type RejectReason = 'invalid' | 'unknown_symbol' | 'future' | 'stale' | 'market_closed';
 
 export type IngestResult =
-  | { ok: true; received: number; saved: number; rejected: Partial<Record<RejectReason, number>> }
+  | {
+      ok: true;
+      received: number;
+      saved: number;
+      rejected: Partial<Record<RejectReason, number>>;
+      /** Tavana ya da tabana çekilen fiyat sayısı (FR-30, pay piyasası kuralı). */
+      clamped: number;
+    }
   | { ok: false; error: string };
 
 /**
@@ -55,6 +62,10 @@ export class PriceIngestService {
       rejected[reason] = (rejected[reason] ?? 0) + 1;
     };
 
+    // Hisse varlıklarında seans kapalıyken fiyat güncellenmez: ekranda son kapanış görünür.
+    const marketOpen = source.equities.size > 0 ? marketStatus(new Date(now)).open : false;
+    let clamped = 0;
+
     const latest = new Map<string, StoredPrice>();
     for (const raw of parsed.data.ticks) {
       const tick = priceTick.safeParse(raw);
@@ -63,11 +74,16 @@ export class PriceIngestService {
         continue;
       }
       const { symbol, price, timestamp } = tick.data;
+      const equity = source.equities.get(symbol);
       if (!source.symbols.has(symbol)) reject('unknown_symbol');
+      else if (equity && !marketOpen) reject('market_closed');
       else if (timestamp > now + MAX_FUTURE_SKEW_MS) reject('future');
       else if (isPriceStale(timestamp, now)) reject('stale');
       else if ((latest.get(symbol)?.timestamp ?? -1) < timestamp) {
-        latest.set(symbol, { symbol, price, timestamp });
+        // Tavan/taban: platformun akışı sapıtsa da oyuncu günlük %10'dan fazla oynayan fiyat görmez.
+        const limited = equity ? clampToLimits(price, equity.referenceClose) : { price, clamped: null };
+        if (limited.clamped) clamped += 1;
+        latest.set(symbol, { symbol, price: limited.price, timestamp });
       }
     }
 
@@ -81,7 +97,7 @@ export class PriceIngestService {
       this.logger.debug(`Rejected ticks for tenant ${source.tenantId}: ${JSON.stringify(rejected)}`);
     }
 
-    return { ok: true, received: parsed.data.ticks.length, saved, rejected };
+    return { ok: true, received: parsed.data.ticks.length, saved, rejected, clamped };
   }
 
   private fail(source: PriceFeedSource, error: string): IngestResult {

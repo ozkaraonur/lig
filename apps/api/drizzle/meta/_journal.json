@@ -78,6 +78,13 @@
       "when": 1789686706847,
       "tag": "0010_real_trade_clicks",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789722451013,
+      "tag": "0011_equity_market",
+      "breakpoints": true
     }
   ]
 }

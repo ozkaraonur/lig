@@ -8,7 +8,12 @@ import { type PriceFeedSource } from './ports';
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const OTHER_TENANT = '22222222-2222-4222-8222-222222222222';
 const URL_A = 'http://feed.test/prices';
-const source: PriceFeedSource = { tenantId: TENANT, url: URL_A, symbols: new Set(['BTC', 'ETH']) };
+const source: PriceFeedSource = {
+  tenantId: TENANT,
+  url: URL_A,
+  symbols: new Set(['BTC', 'ETH']),
+  equities: new Map(),
+};
 
 let client: FakeFeedClient;
 let store: InMemoryPriceStore;
@@ -29,7 +34,7 @@ describe('PriceIngestService (FR-30)', () => {
     client.responses[URL_A] = { ticks: [tick('BTC', '4000000.12'), tick('ETH', '150000')] };
     const result = await service.ingest(source);
 
-    expect(result).toEqual({ ok: true, received: 2, saved: 2, rejected: {} });
+    expect(result).toEqual({ ok: true, received: 2, saved: 2, rejected: {}, clamped: 0 });
     const latest = await store.getLatest(TENANT, ['BTC', 'ETH']);
     expect(latest.get('BTC')).toEqual({ symbol: 'BTC', price: '4000000.12', timestamp: now });
   });
@@ -91,5 +96,68 @@ describe('PriceIngestService (FR-30)', () => {
   ])('reports %s without throwing', async (_label, response, error) => {
     client.responses[URL_A] = response;
     expect(await service.ingest(source)).toEqual({ ok: false, error });
+  });
+});
+
+/** Hisse varlıkları: seans saati ve tavan/taban (Faz 2, 7. adım). */
+describe('PriceIngestService, hisse kuralları', () => {
+  const OPEN = new Date('2026-09-22T11:00:00+03:00').getTime();
+  const CLOSED = new Date('2026-09-22T19:00:00+03:00').getTime();
+  const equitySource: PriceFeedSource = {
+    tenantId: TENANT,
+    url: URL_A,
+    symbols: new Set(['THYAO', 'BTC']),
+    equities: new Map([
+      ['THYAO', { symbol: 'THYAO', referenceClose: '100', referenceCloseDate: '2026-09-21' }],
+    ]),
+  };
+
+  it('seans açıkken fiyatı saklar', async () => {
+    now = OPEN;
+    client.responses[URL_A] = { ticks: [{ symbol: 'THYAO', price: '105.5', timestamp: now }] };
+    expect(await service.ingest(equitySource)).toMatchObject({ saved: 1, clamped: 0 });
+    expect((await store.getLatest(TENANT, ['THYAO'])).get('THYAO')?.price).toBe('105.5');
+  });
+
+  it('seans kapalıyken hisse fiyatı güncellenmez, son fiyat durur', async () => {
+    now = OPEN;
+    client.responses[URL_A] = { ticks: [{ symbol: 'THYAO', price: '105.5', timestamp: now }] };
+    await service.ingest(equitySource);
+
+    now = CLOSED;
+    client.responses[URL_A] = { ticks: [{ symbol: 'THYAO', price: '108', timestamp: now }] };
+    const result = await service.ingest(equitySource);
+    expect(result).toMatchObject({ saved: 0, rejected: { market_closed: 1 } });
+    expect((await store.getLatest(TENANT, ['THYAO'])).get('THYAO')?.price).toBe('105.5');
+  });
+
+  it('seans kapalıyken kripto fiyatı akmaya devam eder', async () => {
+    now = CLOSED;
+    client.responses[URL_A] = { ticks: [{ symbol: 'BTC', price: '4000000', timestamp: now }] };
+    expect(await service.ingest(equitySource)).toMatchObject({ saved: 1 });
+    expect((await store.getLatest(TENANT, ['BTC'])).get('BTC')?.price).toBe('4000000');
+  });
+
+  it('tavanı aşan fiyat tavana çekilir, tabanın altı tabana', async () => {
+    now = OPEN;
+    client.responses[URL_A] = { ticks: [{ symbol: 'THYAO', price: '130', timestamp: now }] };
+    expect(await service.ingest(equitySource)).toMatchObject({ saved: 1, clamped: 1 });
+    expect((await store.getLatest(TENANT, ['THYAO'])).get('THYAO')?.price).toBe('110.0000');
+
+    now = OPEN + 1000;
+    client.responses[URL_A] = { ticks: [{ symbol: 'THYAO', price: '10', timestamp: now }] };
+    expect(await service.ingest(equitySource)).toMatchObject({ clamped: 1 });
+    expect((await store.getLatest(TENANT, ['THYAO'])).get('THYAO')?.price).toBe('90.0000');
+  });
+
+  it('referans kapanışı olmayan yeni varlıkta limit uygulanmaz', async () => {
+    now = OPEN;
+    const fresh: PriceFeedSource = {
+      ...equitySource,
+      equities: new Map([['THYAO', { symbol: 'THYAO', referenceClose: null, referenceCloseDate: null }]]),
+    };
+    client.responses[URL_A] = { ticks: [{ symbol: 'THYAO', price: '900', timestamp: now }] };
+    expect(await service.ingest(fresh)).toMatchObject({ saved: 1, clamped: 0 });
+    expect((await store.getLatest(TENANT, ['THYAO'])).get('THYAO')?.price).toBe('900');
   });
 });

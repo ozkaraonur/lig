@@ -156,7 +156,7 @@ export class AdminSettingsService {
     const now = new Date(this.clock());
     const updated = await this.branding.update(admin.tenantId, input, (before, after) => {
       const meta: AuditMetadata = {};
-      for (const key of ['name', 'primaryColor', 'logoUrl'] as const) {
+      for (const key of ['name', 'primaryColor', 'logoUrl', 'themeMode'] as const) {
         if (before[key] !== after[key]) {
           meta[`${key}From`] = before[key];
           meta[`${key}To`] = after[key];

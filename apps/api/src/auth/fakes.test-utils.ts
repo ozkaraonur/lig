@@ -1,4 +1,4 @@
-import { DEFAULT_PRIMARY_COLOR } from '@lig/shared';
+import { DEFAULT_PRIMARY_COLOR, DEFAULT_THEME_MODE } from '@lig/shared';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PLAYER_TOKEN_AUDIENCE } from '@lig/shared';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
@@ -28,7 +28,7 @@ export class InMemoryTenantDirectory implements TenantDirectory {
       ? {
           name: 'Test Platform',
           realTradeUrl: 'https://platform.test/trade',
-          branding: { primaryColor: DEFAULT_PRIMARY_COLOR, logoUrl: null },
+          branding: { primaryColor: DEFAULT_PRIMARY_COLOR, logoUrl: null, themeMode: DEFAULT_THEME_MODE },
         }
       : null;
   }
