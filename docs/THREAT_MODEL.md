@@ -331,3 +331,24 @@
 - Yarım gün seansının kapanış saati sabit 13:00 modellendi; Borsa İstanbul duyurusu farklı bir saat verirse liste güncellenmeli.
 - Sahte Aracı Kurum'un fiyatları uydurmadır ve gerçek BIST verisi değildir. Gerçek veri lisans gerektirir (Faz 3.5).
 - Sunucu saati yanlışsa seans kuralı da yanlış olur. Pilotta NTP ve saat sapması izleme gerekir.
+
+## Gerçek fiyat modu: uygulama ayrıntısı (Faz 2)
+
+**Kod:** `apps/mock-platform/src/real-prices.ts`, `server.ts`, `main.ts`. **Testler:** `real-prices.test.ts`, `server.test.ts` (kaynak enjekte edilir, ağa çıkılmaz). Ayrıca yerel sahte bir borsa ucuyla uçtan uca denendi: fiyat sahte platformdan lig API'sine, oradan oyuncu ekranına akıyor ve değişiyor.
+
+| Saldırı ya da hata                              | Sonuç                                                           | Test |
+| ----------------------------------------------- | --------------------------------------------------------------- | ---- |
+| Borsa ucunun cevap vermemesi ya da zaman aşımı  | Son fiyat yayınlanır, tazelik uydurulmaz; 5 sn sonra bayat      | ✓    |
+| Borsa ucunun hiç cevap vermemiş olması          | Simülasyona düşülür, ekranda "düşüldü" yazar                    | ✓    |
+| Yanıtın şemasının değişmesi ya da bozuk gelmesi | Yutulur, son fiyat korunur, hata durumda görünür                | ✓    |
+| Yanıtta sıfır, negatif ya da metin fiyat        | O parite atlanır                                                | ✓    |
+| Tanımadığımız parite (ör. USDTTRY)              | Yayınlanmaz                                                     | ✓    |
+| Borsanın saatinin ileri olması                  | Zaman damgası bizim okuma anımız; "gelecekten fiyat" olmaz      | ✓    |
+| Hız sınırını aşma                               | Tek istekte bütün pariteler, 2 sn'de bir; istek üst üste binmez | ✓    |
+| Modun yanlışlıkla açık kalması                  | Varsayılan kapalı; açıkken ekranda yazıyor                      | ✓    |
+
+**Bilinen açık konular:**
+
+- Borsanın API kullanım şartları pilot öncesi teyit edilmeli (K-028). Mod varsayılan kapalı.
+- Gerçek modda sahte platform dışarıya istek atar. Kapalı ağda çalışan bir demoda mod açılmamalı; açılırsa simülasyona düşer ama ekranda hata görünür.
+- Fiyat kaynağının adresi ortam değişkeninden gelir. Bu değişken yalnızca sahte platformdadır, yönetici panelinden değiştirilemez: platform fiyat adresi zaten kurulumda bizim tarafımızdan giriliyor (SSRF, K-002).

@@ -32,6 +32,8 @@ npm run dev                 # API, web ve sahte platform birlikte çalışır
 npm run db:seed
 ```
 
+Demo için gerçek kripto fiyatı istersen `.env` dosyasına `MOCK_PLATFORM_PRICE_MODE=real` ekleyip `npm run dev`'i yeniden başlat: sahte platform TL paritelerini halka açık bir borsa ucundan okur, kaynak ekranında yazar. Varsayılan sahte fiyattır ve o modda dışarı hiç istek gitmez.
+
 Fiyatlar seed'den sonra en geç 30 saniye içinde akmaya başlar. Sahte platform sayfasındaki **Test araçları** bölümünden fiyat akışını durdurup "bayat fiyat" davranışını deneyebilirsin. `http://localhost:4100/trade` sayfası "gerçek işlem" bildirimi (webhook) gönderir; görevlerden biri buna bağlı.
 
 Çalıştığını kontrol et:

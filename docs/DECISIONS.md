@@ -222,3 +222,15 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 - **Yanlış güne kapanış yazılmaz:** Kapanış yalnızca o günün kendi seansı bittikten sonra yazılır. Öğle arasında ve seans açılmadan önce de "kapalı" görünür; o anda yazılsaydı bugünün canlı fiyatı dünün kapanışı olurdu. API akşam kapalıysa o günün kapanışı boş kalır ve ertesi gün limit uygulanmaz: uydurma limit yerine limitsiz gün.
 - **Referansı olmayan varlıkta limit yok:** Yeni eklenen hisse ilk kapanışa kadar limitsizdir. İlk günün açılış fiyatına göre limit koymak gerçek kuralla uyuşmazdı.
 - **Tema modu marka ayarında:** `tenants.theme` jsonb alanına `themeMode` eklendi (yeni kolon gerekmedi). Oyuncu ekranı `data-theme` ile CSS token setini değiştirir; marka renginden hesaplanan okunur yazı rengi artık zemine göre hesaplanır (koyu zeminde beyaza, açık zeminde siyaha doğru).
+
+## K-028 · Demo için gerçek kripto fiyatı
+
+- **Sorun:** Demo görüşmesinde ekrandaki fiyatlar uydurma olunca ilk soru "bunlar gerçek mi" oluyor ve konu üründen çıkıyor.
+- **Karar:** Gerçek fiyatı lig modülü değil, sahte platform çeker. Modülün fiyat sözleşmesi (FR-30) aynen kalır: platform kendi ucunda fiyat yayınlar, biz okuruz. Pilotta bu işi gerçek platform yapacağı için demo da gerçeğe uygun çalışır. Modüle borsa adaptörü koymak, tasarımdaki "fiyat platformdan gelir" kuralını bozardı.
+- **Kaynak:** BtcTurk'ün halka açık ticker ucu (`/api/v2/ticker`). Anahtar istemez, TL pariteleri vardır (sanal bakiye TL olduğu için önemli) ve belgelenmiş limiti bizim kullanımımızın çok üstünde: tek istekte bütün pariteler, varsayılan 2 saniyede bir. Kaynak adresi ortam değişkeniyle değiştirilebilir.
+- **Varsayılan kapalı:** `MOCK_PLATFORM_PRICE_MODE=real` demeden dışarı hiç istek gitmez. Geliştirme ve CI sahte fiyatla çalışır; testler ağa çıkmaz, kaynak enjekte edilir.
+- **Zaman damgası bizim okuma anımızdır**, borsanın verdiği değil. Borsanın saati bizden ileriyse lig API'si fiyatı "gelecekten geldi" diye reddederdi.
+- **Kaynak susarsa:** Son bilinen fiyat yayınlanmaya devam eder ama zaman damgası tazelenmez; 5 saniye sonra lig API'si fiyatı bayat sayar ve emir kabul etmez. Uydurma tazelik, yanlış fiyattan emir demek olurdu. Hiç fiyat alınamadıysa simülasyona düşülür: demo boş ekranla başlamaz.
+- **Kaynak ekranda görünür:** Sahte platform sayfasında "gerçek borsa / simülasyon", son okuma zamanı ve varsa son hata yazar. Demo sırasında hangisinin açık olduğu tartışma konusu olmaz.
+- **BIST tarafı sahte kalır:** Gerçek BIST verisi lisanslı. Aracı kurum müşterisi sahte fiyatla çalışmaya devam eder (Faz 3.5).
+- **Açık konu:** Borsanın API kullanım şartları (ticari kullanım, atıf, izin) pilot öncesi teyit edilmeli. Belgelerde hız sınırları var; kullanım şartlarını buradan doğrulayamadım. Mod varsayılan kapalı olduğu için bugün risk yok, ama müşteriye açık bir demoda açılmadan önce bakılmalı.

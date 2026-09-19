@@ -4,6 +4,8 @@ import type { FastifyInstance } from 'fastify';
 import { decodeProtectedHeader, importSPKI, jwtVerify } from 'jose';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type SigningKeys } from './keys.js';
+import { PriceSimulator } from './prices.js';
+import { RealPriceFeed } from './real-prices.js';
 import { buildServer } from './server.js';
 
 let keys: SigningKeys;
@@ -101,9 +103,16 @@ describe('mock platform', () => {
   it('freezes prices while paused and resumes', async () => {
     const snapshot = async () => (await app.inject({ method: 'GET', url: '/prices' })).json();
     await app.inject({ method: 'POST', url: '/debug/prices/pause' });
-    expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toEqual({ paused: true });
+    expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toMatchObject({
+      paused: true,
+      // Fiyat kaynağı da bildirilir (8. adım); varsayılan simülasyon.
+      mode: 'simulated',
+      fallback: false,
+    });
     await app.inject({ method: 'POST', url: '/debug/prices/resume' });
-    expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toEqual({ paused: false });
+    expect((await app.inject({ method: 'GET', url: '/debug/prices' })).json()).toMatchObject({
+      paused: false,
+    });
     expect(await snapshot()).toHaveProperty('ticks');
   });
 
@@ -117,5 +126,69 @@ describe('mock platform', () => {
     expect((await app.inject({ method: 'POST', url: '/players/oyuncu-1/real-trades' })).statusCode).toBe(503);
     expect((await app.inject({ method: 'POST', url: '/players/%3Cx%3E/real-trades' })).statusCode).toBe(400);
     expect((await app.inject({ method: 'POST', url: '/debug/webhooks/replay-last' })).statusCode).toBe(404);
+  });
+});
+
+/** Gerçek fiyat modu (8. adım): kaynak enjekte edilir, ağa çıkılmaz. */
+describe('gerçek fiyat modu', () => {
+  const buildWithReal = async (respond: () => unknown) => {
+    const simulator = new PriceSimulator();
+    const realPrices = new RealPriceFeed(simulator, {
+      url: 'http://borsa.test/ticker',
+      fetchJson: async () => {
+        const result = respond();
+        if (result instanceof Error) throw result;
+        return result;
+      },
+    });
+    await realPrices.refresh();
+    return buildServer({
+      keys,
+      issuer: 'mock-test',
+      webUrl: 'http://localhost:3000',
+      prices: simulator,
+      realPrices,
+    });
+  };
+
+  it('gerçek fiyatları lig şemasında yayınlar ve kaynağı bildirir', async () => {
+    const real = await buildWithReal(() => ({
+      data: [
+        { pair: 'BTCTRY', last: 4_250_000 },
+        { pair: 'ETHTRY', last: 152_345.67 },
+      ],
+    }));
+    try {
+      const ticks = (await real.inject({ method: 'GET', url: '/prices' })).json<{
+        ticks: Array<{ symbol: string; price: string }>;
+      }>().ticks;
+      expect(priceFeedResponse.safeParse({ ticks }).success).toBe(true);
+      expect(ticks.map((t) => t.symbol)).toEqual(['BTC', 'ETH']);
+      expect((await real.inject({ method: 'GET', url: '/debug/prices' })).json()).toMatchObject({
+        mode: 'real',
+        fallback: false,
+        source: 'http://borsa.test/ticker',
+      });
+    } finally {
+      await real.close();
+    }
+  });
+
+  it('kaynak ulaşılamazsa simülasyona düşer ve bunu bildirir', async () => {
+    const real = await buildWithReal(() => new Error('bağlanılamadı'));
+    try {
+      const ticks = (await real.inject({ method: 'GET', url: '/prices' })).json<{
+        ticks: Array<{ symbol: string }>;
+      }>().ticks;
+      // Demo boş ekranla başlamaz: sahte fiyatlar yayınlanmaya devam eder.
+      expect(ticks.length).toBeGreaterThan(0);
+      expect((await real.inject({ method: 'GET', url: '/debug/prices' })).json()).toMatchObject({
+        mode: 'real',
+        fallback: true,
+        lastError: 'bağlanılamadı',
+      });
+    } finally {
+      await real.close();
+    }
   });
 });

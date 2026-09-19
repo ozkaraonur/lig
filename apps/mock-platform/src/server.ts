@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { type SigningKeys } from './keys.js';
 import { LOGIN_PAGE_HTML, LOGIN_PAGE_SCRIPT } from './login-page.js';
 import { PriceSimulator } from './prices.js';
+import { type PriceSourceStatus, type RealPriceFeed } from './real-prices.js';
 import { TRADE_PAGE_HTML, TRADE_PAGE_SCRIPT } from './trade-page.js';
 import { type WebhookSender } from './webhooks.js';
 
@@ -23,6 +24,8 @@ export interface MockPlatformOptions {
   webUrl: string;
   /** Yayınlanan fiyatlar. Verilmezse varsayılan piyasalarla yeni bir simülatör kullanılır. */
   prices?: PriceSimulator;
+  /** Demo için gerçek fiyat kaynağı (8. adım). Verilirse `/prices` bunu yayınlar. */
+  realPrices?: RealPriceFeed;
   /** Gerçek işlem bildirimlerini lig API'sine gönderir (FR-31). Verilmezse işlem sayfası devre dışı. */
   webhooks?: WebhookSender;
   /** Sayfa başlığında görünen müşteri adı; aynı uygulama iki sahte müşteriyi taklit eder. */
@@ -62,6 +65,16 @@ export async function buildServer(options: MockPlatformOptions): Promise<Fastify
 
   app.get('/health', async () => ({ status: 'up', service: 'mock-platform' }));
 
+  /** Fiyat kaynağının durumu: demo sırasında gerçek mi sahte mi olduğu görünür (8. adım). */
+  const priceStatus = (): PriceSourceStatus =>
+    options.realPrices?.status() ?? {
+      mode: 'simulated',
+      lastSuccessAt: null,
+      lastError: null,
+      fallback: false,
+      source: 'simülasyon',
+    };
+
   app.get('/.well-known/lig-public-key', async () => ({
     issuer: options.issuer,
     algorithm: PLAYER_TOKEN_ALGORITHM,
@@ -93,11 +106,16 @@ export async function buildServer(options: MockPlatformOptions): Promise<Fastify
 
   // Saniyede bir çağrılır; her isteği loglamak terminali doldurur.
   app.get('/prices', { logLevel: 'warn' }, async (_request, reply) =>
-    reply.header('cache-control', 'no-store').send({ ticks: prices.snapshot() }),
+    reply
+      .header('cache-control', 'no-store')
+      .send({ ticks: options.realPrices ? options.realPrices.snapshot() : prices.snapshot() }),
   );
 
   // Yalnızca test aracı: gerçek bir platformda böyle bir uç olmaz.
-  app.get('/debug/prices', async () => ({ paused: prices.paused }));
+  app.get('/debug/prices', async () => ({
+    paused: prices.paused,
+    ...priceStatus(),
+  }));
   app.post('/debug/prices/pause', async () => {
     prices.paused = true;
     return { paused: true };

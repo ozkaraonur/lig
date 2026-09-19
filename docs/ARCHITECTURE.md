@@ -155,6 +155,10 @@ Web: `/admin/quests` (tabloda hedef ve XP satır içi düzenlenir), `/admin/bran
 - Kapanış: `MarketCloseService` seans bittikten sonra o günün son fiyatlarını `reference_close` ve `reference_close_date` alanlarına yazar. Fiyat akışı turuyla birlikte çalışır, ayrı worker yok.
 - `GET /leagues/:id/prices` hisse varlığı olan ligde `market` alanını da döner; oyuncu ekranı seans durumunu sunucudan alır, kendi saatine bakmaz.
 
+## Demo için gerçek fiyat modu (K-028)
+
+Sahte platform `MOCK_PLATFORM_PRICE_MODE=real` ile halka açık bir borsa ticker ucundan TL paritelerini okur ve kendi `/prices` ucunda bizim tick şemamızda yayınlar; lig API'si tarafında hiçbir şey değişmez. Varsayılan kapalıdır. Zaman damgası okuma anımızdır, kaynak susarsa son fiyat tazelenmeden yayınlanır (5 sn sonra bayat sayılır), hiç fiyat gelmediyse simülasyona düşülür. Mod ve son okuma zamanı sahte platform sayfasında ve `GET /debug/prices` yanıtında görünür.
+
 ## İki sahte müşteri (Faz 2, 7. adım)
 
 `apps/mock-platform` aynı süreçte iki müşteriyi taklit eder: kripto borsası (4100, issuer `mock-platform`, koyu tema) ve aracı kurum (4200, issuer `mock-broker`, BIST hisseleri, açık tema). Her birinin kendi anahtar çifti (`keys/`, `keys-broker/`), webhook anahtarı ve tenant kaydı vardır. `npm run db:seed` ikisini de kurar.

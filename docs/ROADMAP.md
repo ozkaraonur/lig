@@ -50,7 +50,7 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 - [x] İkinci sahte müşteri: "Sahte Aracı Kurum", BIST hisseleri (sahte fiyat), sektör bilgisi, açık tema (K-027)
 - [x] Seans saati kuralı: hisse varlıklarında seans dışında emir verilmez, fiyat son kapanışta donar (K-027)
 - [x] Tavan/taban kuralı: BIST hisselerinde önceki kapanışa göre ±%10 (K-027)
-- [ ] Demo için gerçek kripto fiyat modu (kullanım şartları uygun, herkese açık bir borsa fiyat ucu)
+- [x] Demo için gerçek kripto fiyat modu: sahte platform halka açık borsa ucundan TL paritelerini yayınlar, varsayılan kapalı (K-028)
 
 ## Faz 3 · Sosyal ve oyunlaştırma, tam sürüm özellikleri
 

@@ -36,6 +36,7 @@ export const LOGIN_PAGE_HTML = `<!doctype html>
     <section class="tools">
       <h2>Test araçları</h2>
       <p>Fiyat akışı: <strong id="feed-status">...</strong></p>
+      <p>Fiyat kaynağı: <strong id="price-mode">...</strong></p>
       <button type="button" id="feed-toggle">Fiyat akışını durdur</button>
       <p>Durdurunca 5 saniye sonra ligde fiyatlar "güncel değil" olur ve emir verilemez.</p>
     </section>
@@ -77,12 +78,35 @@ const feedStatus = document.getElementById('feed-status');
 const feedToggle = document.getElementById('feed-toggle');
 let paused = false;
 
+const priceMode = document.getElementById('price-mode');
+
 function renderFeed() {
   feedStatus.textContent = paused ? 'durduruldu' : 'akıyor';
   feedToggle.textContent = paused ? 'Fiyat akışını başlat' : 'Fiyat akışını durdur';
 }
 
-fetch('/debug/prices').then((r) => r.json()).then((d) => { paused = d.paused; renderFeed(); });
+/** Demo sırasında fiyatın gerçek mi sahte mi olduğu ekranda görünür (8. adım). */
+function renderMode(d) {
+  if (d.mode !== 'real') {
+    priceMode.textContent = 'simülasyon (sahte fiyat)';
+    return;
+  }
+  if (d.fallback) {
+    priceMode.textContent = 'gerçek borsa seçili ama fiyat alınamadı, simülasyona düşüldü' +
+      (d.lastError ? ' (' + d.lastError + ')' : '');
+    return;
+  }
+  const age = d.lastSuccessAt ? Math.round((Date.now() - d.lastSuccessAt) / 1000) : null;
+  priceMode.textContent = 'gerçek borsa' + (age === null ? '' : ', son okuma ' + age + ' sn önce') +
+    (d.lastError ? ' · son hata: ' + d.lastError : '');
+}
+
+function loadStatus() {
+  fetch('/debug/prices').then((r) => r.json()).then((d) => { paused = d.paused; renderFeed(); renderMode(d); });
+}
+
+loadStatus();
+setInterval(loadStatus, 5000);
 
 feedToggle.addEventListener('click', async () => {
   const res = await fetch('/debug/prices/' + (paused ? 'resume' : 'pause'), { method: 'POST' });

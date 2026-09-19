@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadOrCreateKeys } from './keys.js';
 import { BIST_MARKETS, PriceSimulator } from './prices.js';
+import { RealPriceFeed } from './real-prices.js';
 import { buildServer } from './server.js';
 import { DEV_WEBHOOK_SECRET, WebhookSender } from './webhooks.js';
 
@@ -16,17 +17,38 @@ const webUrl = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
 
 const keys = loadOrCreateKeys(fileURLToPath(new URL('../keys/', import.meta.url)));
 const prices = new PriceSimulator();
+
+/**
+ * Demo için gerçek kripto fiyatı (8. adım). Varsayılan kapalı: sahte fiyatla çalışır, dışarı istek
+ * gitmez. `MOCK_PLATFORM_PRICE_MODE=real` ile açılır; kaynak susarsa son fiyat, hiç gelmediyse
+ * simülasyon yayınlanır.
+ */
+const realPriceMode = (process.env.MOCK_PLATFORM_PRICE_MODE ?? 'simulated') === 'real';
+const realPrices = realPriceMode
+  ? new RealPriceFeed(prices, {
+      url: process.env.MOCK_PLATFORM_REAL_PRICE_URL,
+      refreshMs: Number(process.env.MOCK_PLATFORM_REAL_PRICE_REFRESH_MS ?? 2000),
+    })
+  : undefined;
 const ligApiUrl = process.env.LIG_API_URL ?? 'http://127.0.0.1:4000';
 const webhookSecret = process.env.MOCK_PLATFORM_WEBHOOK_SECRET ?? DEV_WEBHOOK_SECRET;
 if (process.env.NODE_ENV === 'production' && webhookSecret === DEV_WEBHOOK_SECRET) {
   throw new Error('MOCK_PLATFORM_WEBHOOK_SECRET must be set in production');
 }
 const webhooks = new WebhookSender({ url: `${ligApiUrl}/webhooks/platform`, issuer, secret: webhookSecret });
-const app = await buildServer({ keys, issuer, webUrl, prices, webhooks, logger: true });
+const app = await buildServer({ keys, issuer, webUrl, prices, realPrices, webhooks, logger: true });
 
-// Fiyatlar saniyede bir hareket eder.
+// Fiyatlar saniyede bir hareket eder. Gerçek modda simülatör de dönmeye devam eder: kaynak hiç
+// cevap vermezse yayınlanan yedek fiyatlar donuk kalmaz.
 const ticker = setInterval(() => prices.tick(), 1000);
 app.addHook('onClose', async () => clearInterval(ticker));
+
+if (realPrices) {
+  app.log.info(`Real price mode on: ${process.env.MOCK_PLATFORM_REAL_PRICE_URL ?? 'varsayılan kaynak'}`);
+  void realPrices.refresh();
+  const realTicker = setInterval(() => void realPrices.refresh(), 1000);
+  app.addHook('onClose', async () => clearInterval(realTicker));
+}
 
 try {
   await app.listen({ port, host });
