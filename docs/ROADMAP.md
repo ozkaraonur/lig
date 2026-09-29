@@ -59,7 +59,7 @@ Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı
 - [ ] Kademe ligleri: Bronz, Gümüş, Altın, Platin, Efsane; ~50 kişilik gruplar, haftalık ilk %20 yükselir, son %20 düşer
 - [ ] Günlük seri: günde en az bir işlem ya da ziyaret, 1 gün kaçırma hakkı, 7 günde XP ya da XP jokeri
 - [ ] XP jokeri: bir hafta görev XP'si 2 kat
-- [ ] Yeni görev şablonları: çeşitlendirme ("3 farklı sektörden varlık al")
+- [x] Yeni görev şablonları: çeşitlendirme ("3 farklı sektörden varlık al", K-029)
 - [ ] Karşılıksız günlük tahmin: doğruysa az XP, yanlışsa kayıp yok, günde 1
 - [ ] Rozetler, unvanlar ve profil çerçeveleri (FR-10), "Tavan Avcısı" dahil
 - [ ] Arkadaş ligi ve davet kodu (FR-09)

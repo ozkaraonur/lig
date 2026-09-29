@@ -81,6 +81,16 @@ export const questStore = {
           join memberships m on m.id = o.membership_id join leagues l on l.id = m.league_id
           where m.player_id = ${playerId}::uuid and l.tenant_id = ${tenantId}::uuid and ${inWindow('o.created_at')}`;
         break;
+      case 'buy_distinct_sectors':
+        // Yalnızca alışlar sayılır. Sektörü olmayan (kripto) varlık sayılmaz: count(distinct) null'ı atlar.
+        // Varlık da tenant'a bağlı (T4).
+        query = sql`
+          select count(distinct a.sector)::int as n from virtual_orders o
+          join memberships m on m.id = o.membership_id join leagues l on l.id = m.league_id
+          join assets a on a.id = o.asset_id
+          where m.player_id = ${playerId}::uuid and l.tenant_id = ${tenantId}::uuid and a.tenant_id = ${tenantId}::uuid
+            and o.side = 'buy' and ${inWindow('o.created_at')}`;
+        break;
       case 'real_trade':
         query = sql`
           select count(*)::int as n from platform_events e

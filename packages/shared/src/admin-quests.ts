@@ -48,6 +48,7 @@ export const QUEST_TEMPLATE_LABELS: Record<QuestTemplate, string> = {
   join_league: 'Lige katıl',
   place_orders: 'Emir ver',
   trade_distinct_assets: 'Farklı varlıklarla işlem yap',
+  buy_distinct_sectors: 'Farklı sektörlerden varlık al',
   real_trade: 'Gerçek hesapta işlem yap',
 };
 

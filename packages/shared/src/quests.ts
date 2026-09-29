@@ -9,6 +9,7 @@ export const QUEST_TEMPLATES = [
   'join_league',
   'place_orders',
   'trade_distinct_assets',
+  'buy_distinct_sectors',
   'real_trade',
 ] as const;
 export type QuestTemplate = (typeof QUEST_TEMPLATES)[number];
@@ -62,6 +63,8 @@ function baseTitle(template: QuestTemplate, target: number): string {
       return `${target} emir ver`;
     case 'trade_distinct_assets':
       return `${target} farklı varlıkta işlem yap`;
+    case 'buy_distinct_sectors':
+      return `${target} farklı sektörden varlık al`;
     case 'real_trade':
       return target === 1 ? 'Platformda gerçek bir işlem yap' : `Platformda ${target} gerçek işlem yap`;
   }

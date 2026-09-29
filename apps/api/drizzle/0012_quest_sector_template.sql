@@ -1,0 +1,2 @@
+ALTER TABLE "quests" DROP CONSTRAINT "quests_template_known";--> statement-breakpoint
+ALTER TABLE "quests" ADD CONSTRAINT "quests_template_known" CHECK ("quests"."template" in ('join_league', 'place_orders', 'trade_distinct_assets', 'buy_distinct_sectors', 'real_trade'));
