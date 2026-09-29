@@ -34,6 +34,7 @@ describe('questTitle', () => {
     expect(questTitle('join_league', 1, 'once')).toBe('Bir lige katıl');
     expect(questTitle('real_trade', 1, 'weekly')).toBe('Bu hafta platformda gerçek bir işlem yap');
     expect(questTitle('join_league', 1, 'weekly')).toBe('Bu hafta bir lige katıl');
+    expect(questTitle('buy_distinct_sectors', 3, 'weekly')).toBe('Bu hafta 3 farklı sektörden varlık al');
   });
 });
 

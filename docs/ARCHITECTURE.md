@@ -91,7 +91,7 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 
 ## Görevler ve XP (FR-07)
 
-- Şablonlar: `join_league`, `place_orders`, `trade_distinct_assets`, `real_trade`. Dönem: `once` ya da `weekly` (pazartesi 00:00 TR, anahtar `2026-W38`).
+- Şablonlar: `join_league`, `place_orders`, `trade_distinct_assets`, `buy_distinct_sectors` (farklı sektörden alış, K-029), `real_trade`. Dönem: `once` ya da `weekly` (pazartesi 00:00 TR, anahtar `2026-W38`).
 - Emir, katılma ve platform olayı aynı transaction'da `outbox_events`'e yazılır. `OutboxWorker` saniyede bir alır (`FOR UPDATE SKIP LOCKED`), oyuncunun görevlerini değerlendirir (K-013).
 - İlerleme kaynak veriden sayılır; hedefe ulaşınca `quest_progress.completed_at` ve `xp_ledger` (kaynak = `görevId:dönem`).
 - `GET /quests`: güncel dönem, anlık ilerleme, tamamlanma ve yenilenme zamanı. `GET /auth/me`: toplam XP ve platform bilgisi.

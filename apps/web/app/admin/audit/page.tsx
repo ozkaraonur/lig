@@ -61,6 +61,7 @@ const METADATA_VALUES: Record<string, string> = {
   join_league: 'lige katıl',
   place_orders: 'emir ver',
   trade_distinct_assets: 'farklı varlıklarla işlem yap',
+  buy_distinct_sectors: 'farklı sektörlerden varlık al',
   real_trade: 'gerçek işlem',
   season: 'sezon',
   true: 'açık',

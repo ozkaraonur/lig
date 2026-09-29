@@ -78,6 +78,14 @@ const SEED_QUESTS = [
   { template: 'real_trade', period: 'weekly', targetCount: 1, xpReward: 250 },
 ] as const;
 
+/** Yalnızca BIST gibi sektör bilgisi olan platformlara eklenir. */
+const SECTOR_QUEST = {
+  template: 'buy_distinct_sectors',
+  period: 'weekly',
+  targetCount: 3,
+  xpReward: 150,
+} as const;
+
 interface SeedTenant {
   name: string;
   /** Sahte müşterinin adresi; anahtar, fiyat akışı ve gerçek işlem sayfası buradan gelir. */
@@ -223,7 +231,9 @@ async function seedTenant(
   console.warn(`Ligler hazır: ${created} yeni lig eklendi.`);
 
   let questsCreated = 0;
-  for (const quest of SEED_QUESTS) {
+  // Sektör görevi yalnızca sektörü olan varlığı bulunan platformda anlamlı (kripto platformunda hiç ilerlemez).
+  const hasSectors = config.assets.some((a) => a.sector);
+  for (const quest of hasSectors ? [...SEED_QUESTS, SECTOR_QUEST] : SEED_QUESTS) {
     const [existing] = await db
       .select({ id: schema.quests.id })
       .from(schema.quests)

@@ -234,3 +234,13 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 - **Kaynak ekranda görünür:** Sahte platform sayfasında "gerçek borsa / simülasyon", son okuma zamanı ve varsa son hata yazar. Demo sırasında hangisinin açık olduğu tartışma konusu olmaz.
 - **BIST tarafı sahte kalır:** Gerçek BIST verisi lisanslı. Aracı kurum müşterisi sahte fiyatla çalışmaya devam eder (Faz 3.5).
 - **Açık konu:** Borsanın API kullanım şartları (ticari kullanım, atıf, izin) pilot öncesi teyit edilmeli. Belgelerde hız sınırları var; kullanım şartlarını buradan doğrulayamadım. Mod varsayılan kapalı olduğu için bugün risk yok, ama müşteriye açık bir demoda açılmadan önce bakılmalı.
+
+## K-029 · Çeşitlendirme görevi: "N farklı sektörden varlık al"
+
+- **Amaç:** Oyuncuyu tek varlığa yığılmaktan çıkarmak (K-017: çeşitlendirme). Ödül yalnızca XP, sıralamaya ve portföye etkisi yok.
+- **Şablon:** `buy_distinct_sectors`, mevcut şablon mekanizmasıyla (K-023) eklendi. Ayrı tablo ya da sayaç yok: ilerleme `virtual_orders` ve `assets.sector`'dan sayılır, aynı olay iki kez gelse de sonuç değişmez. XP tekilliği `xp_ledger`'daki mevcut `(oyuncu, sebep, kaynak)` kısıtından gelir; yeni yarış yüzeyi doğmadı.
+- **Yalnızca alış:** Satış sayılmaz. Görev adı "varlık al"; satışı saymak, alıp hemen satarak hedefi kolaylaştırırdı.
+- **Sektörü olmayan varlık sayılmaz:** Kripto varlıkların sektörü yok. Kripto platformunda bu görev ilerlemez, bu yüzden seed yalnızca sektörlü varlığı olan platforma ekler. Yönetici paneli şablonu her platforma sunar; kripto platformu eklerse görev tamamlanamaz. Bunu panelde uyarı olarak göstermek küçük bir iş, ihtiyaç olursa eklenir.
+- **Sektör serbest metin:** `assets.sector` seed ile girilir ("Bankacılık" ile "bankacılık" iki sektör olur). Pilotta varlık listesi platformdan geldiğinde sektör adları normalize edilmeli (Faz 3.5).
+- **Kabul edilen risk (K-018):** Farklı sektörlerden üç küçük alış hedefi tamamlar. `trade_distinct_assets` ile aynı seviyede ve yalnızca 150 XP; çoklu hesap ya da son dakika riskini büyütmez.
+- **Migration:** `0012_quest_sector_template.sql` yalnızca `quests_template_known` CHECK kısıtını genişletir. Varsayılan görev sayısı üst sınırı 5 şablon × 2 dönem = 10 oldu (K-023).

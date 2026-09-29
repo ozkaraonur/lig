@@ -283,7 +283,7 @@
 
 - Logo adresi platformun sunucusundan çekiliyor: oyuncunun IP'si o sunucuya gider ve adresin arkasındaki görsel sonradan değişebilir. Pilotta logonun kendi depolamamıza yüklenmesi değerlendirilecek (K-024).
 - "Gerçek işlem yap" görevinin hukuki değerlendirmesi bekliyor (K-017); platform ayarla kapatabiliyor (K-022).
-- Görev sayısı ayrı bir sınırla değil, şablon ve dönem kombinasyonu sayısıyla (8) sınırlı. Şablon listesi büyürse oyuncu ekranındaki görev sayısı için ayrı bir üst sınır gerekir.
+- Görev sayısı ayrı bir sınırla değil, şablon ve dönem kombinasyonu sayısıyla (Faz 3, 1. adımdan sonra 10) sınırlı. Şablon listesi büyürse oyuncu ekranındaki görev sayısı için ayrı bir üst sınır gerekir.
 
 ## Metrikler: uygulama ayrıntısı (Faz 2)
 
@@ -352,3 +352,23 @@
 - Borsanın API kullanım şartları pilot öncesi teyit edilmeli (K-028). Mod varsayılan kapalı.
 - Gerçek modda sahte platform dışarıya istek atar. Kapalı ağda çalışan bir demoda mod açılmamalı; açılırsa simülasyona düşer ama ekranda hata görünür.
 - Fiyat kaynağının adresi ortam değişkeninden gelir. Bu değişken yalnızca sahte platformdadır, yönetici panelinden değiştirilemez: platform fiyat adresi zaten kurulumda bizim tarafımızdan giriliyor (SSRF, K-002).
+
+## Çeşitlendirme görevi: uygulama ayrıntısı (Faz 3, adım 1)
+
+**Kod:** `apps/api/src/quests/quest-store.ts` (`buy_distinct_sectors` sayımı), `packages/shared/src/quests.ts`, migration `0012_quest_sector_template.sql`. **Testler:** `quests-sector.int.test.ts` (gerçek PostgreSQL), `quests.test.ts` (başlık). Testlerin yakaladığı üç mutasyonla kanıtlandı: alış filtresini, varlığın tenant koşulunu ve XP defterindeki `on conflict` tekilliğini kaldırınca ilgili test kırmızıya döndü.
+
+| Saldırı ya da hata                                   | Sonuç                                         | Test |
+| ---------------------------------------------------- | --------------------------------------------- | ---- |
+| Aynı sektörden çok sayıda alışla hedefi geçme        | Tek sektör sayılır                            | ✓    |
+| Sat, sat, sat ile sektör sayısını şişirme            | Satış sayılmaz                                | ✓    |
+| Kripto (sektörsüz) varlıkla hedefi doldurma          | Sayılmaz                                      | ✓    |
+| Hafta sınırında (pazar 23:59 / pazartesi 00:00) alış | Yalnızca kendi haftasına yazılır              | ✓    |
+| Başka platformun varlığı ya da başka oyuncunun alışı | Sayılmaz (sorgu oyuncu ve tenant'a bağlı, T4) | ✓    |
+| Aynı hedefi 8 eşzamanlı değerlendirmeyle çoklama     | XP tam bir kez, tek tamamlanma                | ✓    |
+| Bilinmeyen şablon adı                                | 400; veritabanında CHECK kısıtı da var        | ✓    |
+
+**Bilinen açık konular:**
+
+- Üç küçük alışla hedef tamamlanabilir: çeşitlendirme davranışı değil, yüzeysel çeşitlilik ödüllenir. Ödül 150 XP ve yalnızca haftalık; kabul edildi (K-018, K-029).
+- Kripto platformunda görev tamamlanamaz. Seed eklemiyor, panel şablonu yine sunuyor.
+- Sektör adları serbest metin; farklı yazımlar ayrı sayılır (Faz 3.5'te platform verisiyle normalize edilecek).
