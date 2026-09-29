@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { assets, tenants } from '../db/schema';
 import { connectIntegration, createTenant, deleteTenants } from '../test/integration.test-utils';
@@ -37,7 +37,7 @@ const read = async (symbol: string) => {
       sector: assets.sector,
     })
     .from(assets)
-    .where(eq(assets.symbol, symbol));
+    .where(and(eq(assets.tenantId, tenantId), eq(assets.symbol, symbol)));
   return row;
 };
 
