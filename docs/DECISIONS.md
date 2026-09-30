@@ -76,6 +76,7 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
   - **ESLint 9 → 10.10, @eslint/js 10.** Yapılandırma `eslint/config` içindeki `defineConfig` ile yazıldı (`tseslint.config` eskidi). Kurallar aynı.
   - **drizzle-kit 0.31.10'da kaldı:** yeni seri (1.0) hâlâ beta. İçindeki `@esbuild-kit/core-utils` paketinin eski esbuild'i npm `overrides` ile drizzle-kit'in kendi kullandığı 0.25.12'ye sabitlendi; `generate`, `check` ve `migrate` boş ve dolu veritabanında denendi. drizzle-kit 1.0 kararlı çıkınca override kaldırılır.
   - Sonuç: `npm audit` (geliştirme paketleri dahil) 0 uyarı.
+- **next 16.3.5 → 16.3.8 (Faz 3, adım 5 sonrası):** `next/og` içinde kritik RCE uyarısı (GHSA-vcvr-r3jv-pc5j) yayımlandı, CI'daki `npm audit --omit=dev` kırmızıya döndü. Yama sürümüne çıkıldı, `npm run check` yeşil, `npm audit` temiz.
 
 ## K-013 · Görevler için PostgreSQL outbox, BullMQ değil
 
