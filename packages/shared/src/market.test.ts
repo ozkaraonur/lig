@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clampToLimits,
   isTradingDay,
+  limitStateAtClose,
   lastSessionClose,
   marketStatus,
   priceLimits,
@@ -127,5 +128,30 @@ describe('tavan ve taban', () => {
   it('sınır değerleri aralıkta sayılır', () => {
     expect(clampToLimits('110.0000', '100').clamped).toBeNull();
     expect(clampToLimits('90.0000', '100').clamped).toBeNull();
+  });
+});
+
+describe('limitStateAtClose', () => {
+  it('akışın sınıra çektiği kapanış tavan ya da taban sayılır', () => {
+    const up = clampToLimits('150', '100').price;
+    const down = clampToLimits('50', '100').price;
+    expect(limitStateAtClose(up, '100')).toBe('limit_up');
+    expect(limitStateAtClose(down, '100')).toBe('limit_down');
+  });
+
+  it('sınıra ondalıkla yaklaşan ama ulaşmayan kapanış tavan sayılmaz', () => {
+    expect(limitStateAtClose('109.9999', '100')).toBeNull();
+    expect(limitStateAtClose('90.0001', '100')).toBeNull();
+    expect(limitStateAtClose('100', '100')).toBeNull();
+  });
+
+  it('kolon hassasiyetiyle yazılmış sınır fiyatı da tavan sayılır', () => {
+    expect(limitStateAtClose('110.0000000000', '100.0000000000')).toBe('limit_up');
+  });
+
+  it('önceki kapanış yoksa ya da bozuksa tavan yoktur', () => {
+    expect(limitStateAtClose('150', null)).toBeNull();
+    expect(limitStateAtClose('150', '0')).toBeNull();
+    expect(limitStateAtClose('abc', '100')).toBeNull();
   });
 });

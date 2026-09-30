@@ -61,6 +61,11 @@ export interface LeagueCloseTransaction {
   /** Daha önce verilmiş (aynı oyuncu, sebep, kaynak) ödülü atlar. Gerçekten verilen XP toplamını döner. */
   grantXp(grants: XpGrant[]): Promise<number>;
   markClosed(leagueId: string, closedAt: Date, closingPrices: Record<string, string | null>): Promise<void>;
+  /**
+   * Ligin bütün üyeleri için rozet yeniden değerlendirme sinyali yazar (outbox, K-013). Kapanışla aynı
+   * transaction'da: kapanış olur da sinyal kaybolmaz ("Lig Bitirici", "Podyum").
+   */
+  enqueueBadgeChecks(leagueId: string): Promise<void>;
 }
 
 export interface LeagueCloseUnitOfWork {

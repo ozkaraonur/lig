@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CLOCK_MS, systemClockMs } from '../common/clock';
+import { GamificationModule } from '../gamification/gamification.module';
 import { LeaguesModule } from '../leagues/leagues.module';
 import { PricesModule } from '../prices/prices.module';
 import {
@@ -16,7 +17,7 @@ import { RankingService } from './ranking.service';
 import { RedisRankingStore } from './redis-ranking.store';
 
 @Module({
-  imports: [AuthModule, LeaguesModule, PricesModule],
+  imports: [AuthModule, GamificationModule, LeaguesModule, PricesModule],
   controllers: [RankingController],
   providers: [
     RankingService,

@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type LeaderboardEntry, type LeaderboardView } from '@lig/shared';
+import { type FrameId, type LeaderboardEntry, type LeaderboardView, resolveTitle } from '@lig/shared';
 import { type SessionData } from '../auth/ports';
 import { AppError } from '../common/app-error';
 import { CLOCK_MS, type MsClock } from '../common/clock';
+import { APPEARANCE_READER, type AppearanceReader, type PlayerAppearance } from '../gamification/ports';
 import { LEAGUE_REPOSITORY, type LeagueRecord, type LeagueRepository } from '../leagues/ports';
 import { CASH_SCALE, formatFixed, parseFixed } from '../orders/fixed-point';
 import { returnPercentUnits } from '../orders/order-math';
@@ -37,6 +38,7 @@ export class RankingService {
     @Inject(RANKING_SOURCE) private readonly source: RankingSource,
     @Inject(RANKING_STORE) private readonly store: RankingStore,
     @Inject(FINAL_STANDINGS_READER) private readonly finals: FinalStandingsReader,
+    @Inject(APPEARANCE_READER) private readonly appearance: AppearanceReader,
     @Inject(LEAGUE_REPOSITORY) private readonly leagues: LeagueRepository,
     private readonly prices: PriceService,
     @Inject(CLOCK_MS) private readonly clock: MsClock,
@@ -71,12 +73,21 @@ export class RankingService {
       this.store.count(league.id),
       this.store.updatedAt(league.id),
     ]);
-    const names = await this.source.displayNames([
-      ...top.map((e) => e.playerId),
-      ...(mine ? [mine.playerId] : []),
+    const ids = [...top.map((e) => e.playerId), ...(mine ? [mine.playerId] : [])];
+    const [names, looks] = await Promise.all([
+      this.source.displayNames(ids),
+      this.appearance.find(session.tenantId, ids),
     ]);
     const entry = (e: { playerId: string; valueUnits: bigint; rank: number }): LeaderboardEntry =>
-      this.toEntry(league, session, e.playerId, names.get(e.playerId) ?? 'Oyuncu', e.rank, e.valueUnits);
+      this.toEntry(
+        league,
+        session,
+        e.playerId,
+        names.get(e.playerId) ?? 'Oyuncu',
+        looks.get(e.playerId),
+        e.rank,
+        e.valueUnits,
+      );
 
     return {
       final: false,
@@ -98,12 +109,17 @@ export class RankingService {
       this.finals.count(league.id),
       league.joined ? this.finals.xpAwarded(league.id, session.playerId) : 0,
     ]);
+    const looks = await this.appearance.find(session.tenantId, [
+      ...top.map((r) => r.playerId),
+      ...(mine ? [mine.playerId] : []),
+    ]);
     const entry = (r: { playerId: string; displayName: string; finalRank: number; finalValue: string }) =>
       this.toEntry(
         league,
         session,
         r.playerId,
         r.displayName,
+        looks.get(r.playerId),
         r.finalRank,
         parseFixed(r.finalValue, CASH_SCALE),
       );
@@ -122,6 +138,7 @@ export class RankingService {
     session: SessionData,
     playerId: string,
     displayName: string,
+    look: PlayerAppearance | undefined,
     rank: number,
     valueUnits: bigint,
   ): LeaderboardEntry {
@@ -129,6 +146,9 @@ export class RankingService {
     return {
       rank,
       displayName,
+      // Unvan ve çerçeve yalnızca görünümdür; sıralamayı ve değeri etkilemez (NFR-06).
+      title: resolveTitle(look?.xp ?? 0, look?.selectedTitle ?? null).name,
+      frame: (look?.selectedFrame as FrameId | null | undefined) ?? null,
       totalValue: formatFixed(valueUnits, CASH_SCALE),
       returnPercent: formatFixed(returnPercentUnits(valueUnits, start), 2),
       isMe: playerId === session.playerId,

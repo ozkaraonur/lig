@@ -4,6 +4,7 @@ import { formatCashTr, type LeaderboardEntry, type LeaderboardView } from '@lig/
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../../lib/api';
 import { formatPercent, trendClass } from '../../../lib/labels';
+import { Avatar } from '../../avatar';
 
 /** Sıralamanın yenilenme aralığı. API sıralamayı 2 sn'de bir hesaplar. */
 const REFRESH_MS = 4_000;
@@ -12,9 +13,11 @@ function Row({ entry }: { entry: LeaderboardEntry }) {
   return (
     <li className={`card-row rank-row ${entry.isMe ? 'me' : ''}`}>
       <span className="rank">{entry.rank}</span>
+      <Avatar name={entry.displayName} frame={entry.frame} />
       <span className="name">
         {entry.displayName}
         {entry.isMe && <span className="muted"> (sen)</span>}
+        <span className="title muted">{entry.title}</span>
       </span>
       <span className="num">{formatCashTr(entry.totalValue)}</span>
       <span className={`num pct ${trendClass(entry.returnPercent)}`}>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError, MOCK_PLATFORM_URL } from '../lib/api';
 import { BrandingStyle, BrandLogo } from './branding';
 import { LeagueList } from './league-list';
+import { ProfileCard } from './profile-card';
 import { QuestList } from './quest-list';
 import { RealAccountLink } from './real-account-link';
 import { VirtualMoneyNotice } from './virtual-money-notice';
@@ -69,6 +70,7 @@ export default function PlayerHome() {
           <RealAccountLink platform={state.platform} />
           <LeagueList />
           <QuestList onProgress={load} />
+          <ProfileCard displayName={state.player.displayName} />
           <VirtualMoneyNotice />
         </>
       )}

@@ -372,3 +372,36 @@
 - Üç küçük alışla hedef tamamlanabilir: çeşitlendirme davranışı değil, yüzeysel çeşitlilik ödüllenir. Ödül 150 XP ve yalnızca haftalık; kabul edildi (K-018, K-029).
 - Kripto platformunda görev tamamlanamaz. Seed eklemiyor, panel şablonu yine sunuyor.
 - Sektör adları serbest metin; farklı yazımlar ayrı sayılır (Faz 3.5'te platform verisiyle normalize edilecek).
+
+## Rozetler, unvanlar ve çerçeveler: uygulama ayrıntısı (Faz 3, adım 2)
+
+**Kod:** `apps/api/src/gamification/` (`badge-store.ts` kazanım sorgusu, `drizzle-profile.ts` seçim ve okuma, `profile.service.ts`, `profile.controller.ts`), `packages/shared/src/gamification.ts` (katalog), `apps/api/src/prices/drizzle-asset-close.repository.ts` (tavan/taban günleri), migration `0013_badges_titles_frames.sql`. **Testler:** `gamification.int.test.ts` (gerçek PostgreSQL), `profile.e2e.test.ts`, `market-close.int.test.ts`, `ranking.e2e.test.ts`, `gamification.test.ts` (katalog). Testlerin yakaladığı mutasyonla kanıtlandı: `player_badges` birincil anahtarını kaldırınca eşzamanlı kazanım testi kırmızıya döndü (3 yerine 36 rozet); çerçeve sahiplik koşulunu, unvan XP eşiğini, seçimdeki tenant koşulunu, rozet sorgusundaki tenant koşulunu, Türkiye günü hesabını (UTC+3), podyum sınırını, arkadaş ligi filtresini ve kapanışta satır kilidini kaldırınca ilgili test kırmızıya döndü.
+
+| Saldırı ya da hata                                                       | Sonuç                                                                                            | Test |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ---- |
+| Rozet çiftliği: aynı değerlendirmeyi eşzamanlı tekrarlama                | Her rozet bir kez yazılır ve bir kez bildirilir (birincil anahtar + `ON CONFLICT`)               | ✓    |
+| Rozet çiftliği: kaynak veriyi silip yeniden kazanma                      | Rozet kalır, `earned_at` değişmez; yeni kayıt oluşmaz                                            | ✓    |
+| Rozet çiftliği: çoklu hesap                                              | Kabul edildi (K-018). Ödül yalnızca görünüm, XP ve sıralama vermez                               | -    |
+| Rozet çiftliği: iki kişilik arkadaş ligiyle Podyum                       | Arkadaş ligi Lig Bitirici ve Podyum saymaz                                                       | ✓    |
+| Hiç emir vermeden ligi birinci bitirip rozet alma                        | Rozetler için ligde en az bir emir gerekir (K-011 ödül kuralıyla aynı)                           | ✓    |
+| Başkasının çerçevesini seçme (kazanılmamış çerçeve kimliği gönderme)     | 403; `UPDATE` içindeki `exists (player_badges)` koşulu tutmaz, hiçbir alan yazılmaz              | ✓    |
+| Başkasının profilini değiştirme (gövdeye `playerId` koyma)               | 400 (katı şema); oyuncu kimliği yalnızca oturumdan gelir                                         | ✓    |
+| Başka platformun oyuncusunun seçimini ya da rozetini değiştirme          | Seçim `WHERE tenant_id` ile sınırlı, rozet sorguları tenant'a bağlı; profil okuma 404            | ✓    |
+| Yeterli XP'si olmadan yüksek unvan seçme                                 | 403 (`xp >= eşik` aynı `UPDATE` içinde); sıralamada eşik yeniden doğrulanır                      | ✓    |
+| Kısmen sahip olunan isteği kısmen uygulatma (unvan tamam, çerçeve değil) | Hepsi ya da hiçbiri: tek `UPDATE`                                                                | ✓    |
+| Kataloğ dışı unvan ya da çerçeve kimliği                                 | 400 (zod); veritabanında CHECK kısıtı da var                                                     | ✓    |
+| Veritabanı elle bozulup sahip olunmayan unvan gösterilmesi               | `resolveTitle` eşiği yeniden doğrular, en yüksek kazanılmış unvana düşer                         | ✓    |
+| Seçim ucuna istek yağdırma                                               | Oyuncu başına dakikada 20 (T9), aşınca 429                                                       | ✓    |
+| Tavan Avcısı: başka gündeki alışı tavan gününe saydırma                  | Gün, Türkiye takvimiyle eşleşir; sınır dakikaları (00:00, 23:59:59) ve komşu günler testli       | ✓    |
+| Tavan Avcısı: satışla ya da tabanda kapanan hisseyle kazanma             | Yalnızca alış ve yalnızca `limit_up`                                                             | ✓    |
+| Tavan Avcısı: başka platformun tavan gününü kullanma                     | Sorgu hem emrin ligi hem `asset_limit_days` için tenant'a bağlı                                  | ✓    |
+| İki süreç aynı seans kapanışını yazıp tavan gününü ve sinyali çoklama    | Varlık satırı `FOR UPDATE`; ikinci süreç güncel tarihi görüp atlar                               | ✓    |
+| Tavan sinyalinin satıcılara ya da ertesi günün alıcılarına gitmesi       | Sinyal yalnızca o gün alış yapanlara yazılır (fazla değerlendirme zarar vermez, yine de sınırlı) | ✓    |
+| Kapanışta sinyalin kaybolması                                            | Sinyal kapanışla aynı transaction'da (outbox); kapanış olur da sinyal olmaz durumu yok           | ✓    |
+
+**Bilinen açık konular:**
+
+- Tavan Avcısı geriye bakışlıdır: hisse tavana çıktıktan sonra alış yapan da kazanır. Gün içi fiyat serisi olmadan ayırt edilemez (K-031). Proje sahibi karar verecek.
+- Podyum için en az üye koşulu yok (K-030). Tek kişilik platform ligi podyum verir.
+- Rozet, unvan ve çerçeve adlarının (özellikle "Tavan Avcısı") hukuki okunuşu pilot öncesi sorulacak (K-031).
+- Rozet ekranı worker'ın birkaç saniyelik gecikmesiyle güncellenir; profil 10 sn'de bir yenilenir.

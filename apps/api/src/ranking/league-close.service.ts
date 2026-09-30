@@ -44,6 +44,7 @@ export class LeagueCloseService {
       await tx.saveFinalStandings(standings);
       const xpGranted = await tx.grantXp(computeRewards(league.id, standings, traded));
       await tx.markClosed(league.id, now, Object.fromEntries(priceByAsset));
+      await tx.enqueueBadgeChecks(league.id);
       return { closed: true, players: standings.length, xpGranted };
     });
 

@@ -8,6 +8,7 @@ import { PlayerRateLimitGuard } from '../auth/player-rate-limit.guard';
 import { RATE_LIMITER, SESSION_STORE } from '../auth/ports';
 import { SessionGuard } from '../auth/session.guard';
 import { CLOCK_MS } from '../common/clock';
+import { APPEARANCE_READER, type PlayerAppearance } from '../gamification/ports';
 import { InMemoryLeagueRepository, type StoredLeague } from '../leagues/fakes.test-utils';
 import { LEAGUE_REPOSITORY } from '../leagues/ports';
 import { InMemoryPriceStore } from '../prices/fakes.test-utils';
@@ -69,6 +70,7 @@ let running: StoredLeague;
 let finished: StoredLeague;
 let me: string;
 let cookie: Record<string, string>;
+let looks: Map<string, PlayerAppearance>;
 
 beforeEach(async () => {
   repo = new InMemoryLeagueRepository();
@@ -100,6 +102,10 @@ beforeEach(async () => {
     [SESSION_COOKIE_NAME]: await sessions.create({ tenantId: TENANT_A, playerId: me, createdAt: 0 }),
   };
 
+  looks = new Map<string, PlayerAppearance>([
+    [me, { xp: 0, selectedTitle: null, selectedFrame: null }],
+    [other, { xp: 700, selectedTitle: null, selectedFrame: 'laurel' }],
+  ]);
   const names = new Map([
     [me, 'Ben'],
     [other, 'Rakip'],
@@ -116,6 +122,7 @@ beforeEach(async () => {
       { provide: RANKING_STORE, useValue: store },
       { provide: FINAL_STANDINGS_READER, useValue: finals },
       { provide: RANKING_SOURCE, useValue: { displayNames: async () => names } },
+      { provide: APPEARANCE_READER, useValue: { find: async () => looks } },
       { provide: PRICE_STORE, useValue: new InMemoryPriceStore() },
       { provide: SESSION_STORE, useValue: sessions },
       { provide: RATE_LIMITER, useValue: new InMemoryRateLimiter() },
@@ -150,12 +157,30 @@ describe('GET /leagues/:id/leaderboard', () => {
         updatedAt: new Date(1_800_000_000_000).toISOString(),
         playerCount: 2,
         top: [
-          { rank: 1, displayName: 'Rakip', totalValue: '1500.00', returnPercent: '50.00', isMe: false },
-          { rank: 2, displayName: 'Ben', totalValue: '900.00', returnPercent: '-10.00', isMe: true },
+          {
+            rank: 1,
+            displayName: 'Rakip',
+            title: 'Deneyimli Yatırımcı',
+            frame: 'laurel',
+            totalValue: '1500.00',
+            returnPercent: '50.00',
+            isMe: false,
+          },
+          {
+            rank: 2,
+            displayName: 'Ben',
+            title: 'Çaylak',
+            frame: null,
+            totalValue: '900.00',
+            returnPercent: '-10.00',
+            isMe: true,
+          },
         ],
         me: {
           rank: 2,
           displayName: 'Ben',
+          title: 'Çaylak',
+          frame: null,
           totalValue: '900.00',
           returnPercent: '-10.00',
           isMe: true,
@@ -174,6 +199,16 @@ describe('GET /leagues/:id/leaderboard', () => {
     expect((await get(finished.id)).json()).toMatchObject({
       leaderboard: { final: true, top: [{ rank: 1 }, { rank: 2, isMe: true }], me: { xpAwarded: 400 } },
     });
+  });
+
+  it('shows a selected title only while its XP threshold is met', async () => {
+    looks.set(me, { xp: 50, selectedTitle: 'market_wolf', selectedFrame: null });
+    const body = (await get(running.id)).json() as { leaderboard: { me: { title: string } } };
+    expect(body.leaderboard.me.title).toBe('Çaylak');
+
+    looks.set(me, { xp: 5_000, selectedTitle: 'novice', selectedFrame: null });
+    const chosen = (await get(running.id)).json() as { leaderboard: { me: { title: string } } };
+    expect(chosen.leaderboard.me.title).toBe('Acemi Yatırımcı');
   });
 
   it('respects the limit', async () => {
