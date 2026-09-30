@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { questTitle, type QuestView, questWindow } from '@lig/shared';
 import { DB, type Database } from '../db/db.module';
+import { jokerActiveAt } from '../gamification/streak-store';
 import { type DbExecutor, grantXp } from '../xp/xp-ledger';
 import { type QuestRecord, questStore } from './quest-store';
 
@@ -32,8 +33,22 @@ export async function evaluatePlayerQuests(
       const granted = await grantXp(db, [
         { playerId, reason: 'quest', sourceId: questSourceId(quest.id, window.key), amount: quest.xpReward },
       ]);
-      if (granted > 0) completed.push(quest.id);
-      xpGranted += granted;
+      if (granted > 0) {
+        completed.push(quest.id);
+        xpGranted += granted;
+        // XP jokeri (K-032): tamamlanma anında etkin joker varsa aynı görevin XP'si bir kez daha verilir.
+        // Yalnızca az önce yeni verilen ödül için: tekrar çalıştırmada granted 0 olduğundan çift bonus olmaz.
+        if (await jokerActiveAt(db, tenantId, playerId, at)) {
+          xpGranted += await grantXp(db, [
+            {
+              playerId,
+              reason: 'joker_bonus',
+              sourceId: questSourceId(quest.id, window.key),
+              amount: quest.xpReward,
+            },
+          ]);
+        }
+      }
     }
   }
   return { completed, xpGranted };

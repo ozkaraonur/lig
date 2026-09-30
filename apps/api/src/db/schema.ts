@@ -260,6 +260,51 @@ export const playerBadges = pgTable(
   ],
 );
 
+/**
+ * Ziyaret günleri (K-032). Günlük seri, ziyaret günleri ile emir günlerinin birleşiminden hesaplanır. (oyuncu,
+ * gün) tekildir: aynı gün ikinci ziyaret satır eklemez. Gün Türkiye takvimidir.
+ */
+export const playerActivityDays = pgTable(
+  'player_activity_days',
+  {
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    day: date({ mode: 'string' }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.playerId, t.day] })],
+);
+
+/**
+ * XP jokerleri (K-032). Seri eşiğinde kazanılır (oyuncu, kaynak tekil), oyuncu etkinleştirir. Etkinken
+ * tamamlanan görevlerin XP'si 2 kat olur. `activated_at` ve `expires_at` birlikte dolu ya da birlikte boştur.
+ */
+export const xpJokers = pgTable(
+  'xp_jokers',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    /** Kazanıldığı eşik: "seriBaşlangıcı:gün". */
+    sourceId: text().notNull(),
+    earnedAt: createdAt(),
+    activatedAt: timestamp({ withTimezone: true }),
+    expiresAt: timestamp({ withTimezone: true }),
+  },
+  (t) => [
+    unique().on(t.playerId, t.sourceId),
+    check('xp_jokers_window', sql`(${t.activatedAt} is null) = (${t.expiresAt} is null)`),
+  ],
+);
+
 export const memberships = pgTable(
   'memberships',
   {

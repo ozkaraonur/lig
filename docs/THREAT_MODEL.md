@@ -405,3 +405,29 @@
 - Podyum için en az üye koşulu yok (K-030). Tek kişilik platform ligi podyum verir.
 - Rozet, unvan ve çerçeve adlarının (özellikle "Tavan Avcısı") hukuki okunuşu pilot öncesi sorulacak (K-031).
 - Rozet ekranı worker'ın birkaç saniyelik gecikmesiyle güncellenir; profil 10 sn'de bir yenilenir.
+
+## Günlük seri ve XP jokeri: uygulama ayrıntısı (Faz 3, adım 3)
+
+**Kod:** `apps/api/src/gamification/` (`streak-store.ts` etkin günler, ödül, joker etkinleştirme, `streak.service.ts`, `streak.controller.ts`), `packages/shared/src/streak.ts` (seri hesabı), `apps/api/src/quests/quest-evaluator.ts` (joker bonusu), migration `0014_daily_streak_xp_joker.sql`. **Testler:** `streak.int.test.ts` (gerçek PostgreSQL), `streak.test.ts` (seri hesabı). Mutasyonla kanıtlandı: oyuncu satırı kilidini kaldırınca eşzamanlı etkinleştirme testi, etkin joker kontrolünü kaldırınca iki test, Türkiye günü kaymasını (UTC+3) kaldırınca emir günü testi, ziyaret yazımındaki tenant koşulunu kaldırınca tenant testi, bonusun "yeni verildi" koşulunu kaldırınca bonus testi, joker başlangıç koşulunu kaldırınca aralık testi kırmızıya döndü.
+
+| Saldırı ya da hata                                                     | Sonuç                                                                                   | Test |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---- |
+| Aynı eşiğin ödülünü eşzamanlı çağrılarla çoklama                       | 12 eşzamanlı çağrıda 25 XP ve tek joker; XP defteri ve `xp_jokers` tekilliği            | ✓    |
+| Ziyaret ucuna art arda istek atıp gün sayısını şişirme                 | Günde tek satır (birincil anahtar); ayrıca dakikada 20 istek sınırı (T9)                | ✓    |
+| Geçmiş ya da gelecek güne ziyaret yazdırma                             | İstekten gün alınmaz, sunucu saati ve Türkiye takvimi kullanılır                        | ✓    |
+| Gün sınırında (21:00 UTC) emir verip günü kaydırma                     | Gün UTC+3'e göre hesaplanır, 00:30 Türkiye emri o günün etkin günüdür                   | ✓    |
+| Başka oyuncunun ya da başka tenant'ın günleriyle seri kurma            | Her sorgu oyuncu ve tenant'a bağlı; yanlış tenant ile sorulan oyuncunun serisi 0        | ✓    |
+| Başka tenant üzerinden ziyaret yazma ya da joker etkinleştirme         | Ziyaret satırı yazılmaz, etkinleştirme 404                                              | ✓    |
+| Eşzamanlı istekle iki jokeri aynı anda etkinleştirme (2 kat üstü etki) | Oyuncu satırı kilitli; yalnızca biri geçer, ikinci 409                                  | ✓    |
+| Jokeri etkinken yenisini etkinleştirip süreyi uzatma                   | 409 ("zaten etkin"); süre dolunca ikincisi kullanılabilir                               | ✓    |
+| Görev tamamlandıktan sonra joker açıp geriye dönük bonus alma          | Bonus yalnızca yeni verilen görev XP'sine yazılır; önce tamamlanan görev bonus almaz    | ✓    |
+| Aynı görev değerlendirmesini tekrarlayıp bonusu çoğaltma               | `joker_bonus` (oyuncu, kaynak) tekil; tekrarda yeni XP olmaz                            | ✓    |
+| Süresi dolmuş jokerle bonus alma                                       | Etkin aralık yarı açık: başlangıç dahil, bitiş hariç                                    | ✓    |
+| Seriyi bozup yeniden başlatarak aynı eşiği tekrar kazanma              | Yeni başlangıç günü yeni kaynak kimliği demektir; yeni seri gerçekten 7 etkin gün ister | ✓    |
+| Çoklu hesap ile her hesapta seri ve joker toplama                      | Kabul edildi (K-018). Kazanç yalnızca küçük XP ve görünüm                               | -    |
+| Bot ile her gün tek istekle ziyaret ederek seri tutma                  | Kabul edildi, K-032'de açık konu. Emir günleri gerçek eylemdir, ziyaret kolaydır        | -    |
+
+**Bilinen açık konular:**
+
+- Ziyaret tek istekle yazılabilir; bu yüzden seri bir "sadakat" göstergesi, beceri göstergesi değil. Sıkılaştırma seçeneği K-032'de.
+- Joker yalnızca görev XP'sini 2 katlar. Lig sonu XP'si, seri XP'si ve rozetler etkilenmez. Bu bilinçli: portföyü ve sıralamayı etkileyen joker alınmadı (K-017).
