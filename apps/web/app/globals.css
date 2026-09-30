@@ -312,6 +312,11 @@ button.link:disabled {
   white-space: nowrap;
 }
 
+.rank-row .title {
+  display: block;
+  font-size: 0.75rem;
+}
+
 .rank-row .pct {
   width: 5.5em;
 }
@@ -684,4 +689,100 @@ input[type='color'] {
 .badge.sector {
   margin-left: 6px;
   font-weight: 600;
+}
+
+/* Profil: rozetler, unvan ve çerçeve (FR-10). Çerçeveler yalnızca süstür. */
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  --frame: var(--line-strong);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--frame);
+}
+
+.profile-head .avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 1.1rem;
+}
+
+.frame-starter {
+  --frame: #4caf7a;
+}
+
+.frame-mosaic {
+  --frame: #9b7bd8;
+}
+
+.frame-compass {
+  --frame: #4c9be8;
+}
+
+.frame-finish_line {
+  --frame: var(--text);
+}
+
+.frame-laurel {
+  --frame: #e2b93b;
+}
+
+.frame-limit_up {
+  --frame: #e0479e;
+}
+
+.achievements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.achievement {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  font-size: 0.8rem;
+}
+
+.achievement.locked {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.field select {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
 }

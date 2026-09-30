@@ -223,6 +223,15 @@ class DrizzleLeagueCloseTransaction implements LeagueCloseTransaction {
       .set({ status: 'finished', closedAt, closingPrices })
       .where(eq(leagues.id, leagueId));
   }
+
+  async enqueueBadgeChecks(leagueId: string): Promise<void> {
+    await this.tx.execute(sql`
+      insert into outbox_events (tenant_id, player_id, type)
+      select l.tenant_id, m.player_id, 'badge_recheck'::outbox_event_type
+      from memberships m join leagues l on l.id = m.league_id
+      where m.league_id = ${leagueId}::uuid
+    `);
+  }
 }
 
 /** PostgreSQL tek sorguda en fazla 65.535 parametre kabul eder; satır başına 3-4 parametreyle güvenli pay. */

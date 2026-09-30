@@ -92,6 +92,13 @@
       "when": 1790686246471,
       "tag": "0012_quest_sector_template",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790777080655,
+      "tag": "0013_badges_titles_frames",
+      "breakpoints": true
     }
   ]
 }

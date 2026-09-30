@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type MsClock } from '../common/clock';
 import { parseEnv } from '../config/env';
 import { assets, leagues, memberships, players, xpLedger } from '../db/schema';
+import { DrizzleAppearanceReader } from '../gamification/drizzle-profile';
 import { DrizzleLeagueRepository } from '../leagues/drizzle-league.repository';
 import { DrizzleOrderUnitOfWork, DrizzlePortfolioReader } from '../orders/drizzle-orders';
 import { OrdersService } from '../orders/orders.service';
@@ -96,7 +97,15 @@ beforeAll(async () => {
   source = new DrizzleRankingSource(ctx.db);
   store = new RedisRankingStore(ctx.redis);
   const finals = new DrizzleFinalStandingsReader(ctx.db);
-  ranking = new RankingService(source, store, finals, new DrizzleLeagueRepository(ctx.db), prices, clock);
+  ranking = new RankingService(
+    source,
+    store,
+    finals,
+    new DrizzleAppearanceReader(ctx.db),
+    new DrizzleLeagueRepository(ctx.db),
+    prices,
+    clock,
+  );
   portfolios = new PortfolioService(
     new DrizzleLeagueRepository(ctx.db),
     new DrizzlePortfolioReader(ctx.db),

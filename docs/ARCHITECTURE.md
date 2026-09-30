@@ -96,6 +96,16 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 - İlerleme kaynak veriden sayılır; hedefe ulaşınca `quest_progress.completed_at` ve `xp_ledger` (kaynak = `görevId:dönem`).
 - `GET /quests`: güncel dönem, anlık ilerleme, tamamlanma ve yenilenme zamanı. `GET /auth/me`: toplam XP ve platform bilgisi.
 
+## Rozetler, unvanlar ve çerçeveler (FR-10, K-030, K-031)
+
+- Katalog `@lig/shared` içinde sabit: altı rozet (İlk Emir, Çeşitli Portföy, Görev Avcısı, Lig Bitirici, Podyum, Tavan Avcısı), her rozete bağlı bir çerçeve, XP eşiklerinden türetilen beş unvan. Ödül yalnızca görünüm.
+- Kazanım: `OutboxWorker` her oyuncu değerlendirmesinde görevlerden sonra `awardBadges` çalıştırır; tek `INSERT ... SELECT ... ON CONFLICT DO NOTHING`, koşullar kaynak veriden sayılır. Tekillik `player_badges` birincil anahtarında. Rozet geri alınmaz.
+- Sinyaller: emir, katılma, platform olayı (mevcut) ve iki yeni `badge_recheck` kaynağı: lig kapanışı (`LeagueCloseTransaction.enqueueBadgeChecks`, kapanışla aynı transaction) ve tavan günü kaydı.
+- Tavan günü: `DrizzleAssetCloseRepository.saveCloses` seans kapanışını, varlık satırı kilitliyken önceki kapanışa göre `asset_limit_days`'e (`limit_up` / `limit_down`) ve tavan hissesinden o gün alış yapanların sinyaline yazar; tek transaction. Karar `limitStateAtClose` (`@lig/shared`).
+- API: `GET /profile` (rozetler, unvanlar, çerçeveler, seçili olanlar; oyuncu başına dakikada 120 okuma), `PUT /profile/appearance` (`{ title?, frame? }`, dakikada 20). Sahiplik güncellemenin içinde sınanır, reddedilirse 403 ve hiçbir alan yazılmaz.
+- Sıralama: `GET /leagues/:id/leaderboard` her satırda `title` ve `frame` döner (`AppearanceReader`, tenant'a bağlı okuma). Unvan seçimi eşik yeniden doğrulanarak gösterilir.
+- Web: ana ekranda "Profilim" (`profile-card.tsx`: rozetler, unvan ve çerçeve seçimi), sıralamada avatar çerçevesi ve unvan yazısı (`avatar.tsx`). Çerçeve süstür; anlamı yazıyla da verilir.
+
 ## Webhook (FR-31) ve "Gerçek hesabıma geç" (FR-08)
 
 1. Oyuncu lig ekranında "Gerçek hesabıma geç"e dokunur; `tenants.real_trade_url` (yalnızca http/https) açılır.
@@ -183,7 +193,7 @@ Gövdeli her istek `application/json` olmak zorunda, değilse 415 (`app.setup.ts
 
 ## İstek sınırları (T9)
 
-Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumaları dakikada 120, katılma 10, emir 30. Oyuncu girişi IP başına dakikada 20. Yönetici girişi: IP başına 15 dk'da 20, hesap başına 10, MFA kodu yönetici başına 5, giriş adımı başına 3.
+Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumaları dakikada 120, katılma 10, emir 30, profil seçimi 20. Oyuncu girişi IP başına dakikada 20. Yönetici girişi: IP başına 15 dk'da 20, hesap başına 10, MFA kodu yönetici başına 5, giriş adımı başına 3.
 
 ## Veri
 

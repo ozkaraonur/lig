@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import { CLOCK_MS, type MsClock } from '../common/clock';
 import { ENV, type Env } from '../config/env';
 import { DB, type Database } from '../db/db.module';
+import { awardBadges } from '../gamification/badge-store';
 import { evaluatePlayerQuests } from './quest-evaluator';
 
 export const OUTBOX_BATCH_SIZE = 100;
@@ -83,6 +84,8 @@ export class OutboxWorker implements OnApplicationBootstrap, OnApplicationShutdo
             for (const at of evaluationTimes(events)) {
               await evaluatePlayerQuests(sp, first.tenant_id, first.player_id, at);
             }
+            // Rozetler görevlerden sonra: "Görev Avcısı" az önce yazılan görev ilerlemesine bakar (K-030).
+            await awardBadges(sp, first.tenant_id, first.player_id, now);
           });
           await tx.execute(sql`
             update outbox_events set processed_at = ${now.toISOString()}::timestamptz
@@ -95,7 +98,7 @@ export class OutboxWorker implements OnApplicationBootstrap, OnApplicationShutdo
           const attempts = Math.max(...events.map((e) => e.attempts)) + 1;
           const backoffMs = Math.min(2 ** attempts * 1000, MAX_BACKOFF_MS);
           const message = err instanceof Error ? err.message.slice(0, 500) : 'unknown';
-          this.logger.warn(`Quest evaluation failed for player ${first.player_id}: ${message}`);
+          this.logger.warn(`Quest and badge evaluation failed for player ${first.player_id}: ${message}`);
           await tx.execute(sql`
             update outbox_events
             set attempts = ${attempts}, last_error = ${message},

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type FrameId } from './gamification';
 
 /** Kullanıcı hikâyesi (FR-06): ilk 5 oyuncu ve oyuncunun kendi satırı her zaman görünür. */
 export const LEADERBOARD_DEFAULT_LIMIT = 5;
@@ -12,6 +13,10 @@ export interface LeaderboardEntry {
   /** Eşit değerli oyuncular aynı sırayı paylaşır (1, 2, 2, 4). */
   rank: number;
   displayName: string;
+  /** Oyuncunun görünen unvanı (XP eşiğinden türetilir ya da seçtiği unvan, FR-10). */
+  title: string;
+  /** Seçtiği profil çerçevesi; yoksa null. */
+  frame: FrameId | null;
   totalValue: string;
   /** Başlangıç bakiyesine göre getiri, işaretli, 2 ondalık. */
   returnPercent: string;

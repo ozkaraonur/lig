@@ -7,6 +7,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { DbModule } from './db/db.module';
+import { GamificationModule } from './gamification/gamification.module';
 import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
 import { MetricsModule } from './metrics/metrics.module';
@@ -32,6 +33,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     OrdersModule,
     RankingModule,
     QuestsModule,
+    GamificationModule,
     WebhooksModule,
     AdminAuthModule,
     AdminTeamModule,

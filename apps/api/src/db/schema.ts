@@ -10,12 +10,15 @@ import {
   ADMIN_ROLES,
   AUDIT_ACTOR_TYPES,
   ASSET_CLASSES,
+  BADGE_IDS,
+  FRAME_IDS,
   LEAGUE_STATUSES,
   LEAGUE_TYPES,
   ORDER_SIDES,
   PLATFORM_EVENT_TYPES,
   QUEST_PERIODS,
   QUEST_TEMPLATES,
+  TITLE_IDS,
   XP_REASONS,
 } from '@lig/shared';
 import { sql } from 'drizzle-orm';
@@ -49,6 +52,8 @@ export const outboxEventType = pgEnum('outbox_event_type', [
   'order_placed',
   'league_joined',
   'platform_event',
+  /** Rozet yeniden değerlendirme sinyali: lig kapanışı ve tavan/taban günü kaydı (K-030). */
+  'badge_recheck',
 ]);
 
 const inList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(', '));
@@ -144,6 +149,31 @@ export const assets = pgTable(
   (t) => [unique().on(t.tenantId, t.symbol)],
 );
 
+/**
+ * Bir hissenin tavanda ya da tabanda kapandığı seans günleri (FR-10, "Tavan Avcısı"). Market-close servisi
+ * seans kapanışını yazarken aynı transaction'da buraya da yazar. Kaynak veri budur: rozet, emrin verildiği
+ * günle bu tablodaki gün eşleşince kazanılır.
+ */
+export const assetLimitDays = pgTable(
+  'asset_limit_days',
+  {
+    assetId: uuid()
+      .notNull()
+      .references(() => assets.id, { onDelete: 'cascade' }),
+    tenantId: uuid()
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    /** Seans günü, Türkiye takvimi. */
+    sessionDate: date().notNull(),
+    kind: text().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.assetId, t.sessionDate] }),
+    check('asset_limit_days_kind_known', sql`${t.kind} in ('limit_up', 'limit_down')`),
+  ],
+);
+
 export const leagues = pgTable(
   'leagues',
   {
@@ -191,9 +221,43 @@ export const players = pgTable(
     externalId: text().notNull(),
     displayName: text().notNull(),
     xp: integer().notNull().default(0),
+    /** Oyuncunun seçtiği unvan (FR-10). Unvanın kendisi XP'den türetilir; burada yalnızca seçim durur. */
+    selectedTitle: text(),
+    /** Oyuncunun seçtiği profil çerçevesi. Yalnızca kazandığı rozetin çerçevesi seçilebilir. */
+    selectedFrame: text(),
     createdAt: createdAt(),
   },
-  (t) => [unique().on(t.tenantId, t.externalId), check('players_xp_non_negative', sql`${t.xp} >= 0`)],
+  (t) => [
+    unique().on(t.tenantId, t.externalId),
+    check('players_xp_non_negative', sql`${t.xp} >= 0`),
+    check(
+      'players_selected_title_known',
+      sql`${t.selectedTitle} is null or ${t.selectedTitle} in (${inList(TITLE_IDS)})`,
+    ),
+    check(
+      'players_selected_frame_known',
+      sql`${t.selectedFrame} is null or ${t.selectedFrame} in (${inList(FRAME_IDS)})`,
+    ),
+  ],
+);
+
+/**
+ * Kazanılan rozetler (FR-10). (oyuncu, rozet) tekildir: aynı rozet iki kez yazılamaz, worker eşzamanlı ya da
+ * tekrar çalışsa bile. Rozet geri alınmaz. Sahiplik oyuncuya bağlıdır; tenant oyuncu satırından gelir.
+ */
+export const playerBadges = pgTable(
+  'player_badges',
+  {
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    badgeId: text().notNull(),
+    earnedAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.playerId, t.badgeId] }),
+    check('player_badges_badge_known', sql`${t.badgeId} in (${inList(BADGE_IDS)})`),
+  ],
 );
 
 export const memberships = pgTable(

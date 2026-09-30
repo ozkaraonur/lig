@@ -218,6 +218,23 @@ export function clampToLimits(
   return { price, clamped: null };
 }
 
+export type LimitState = 'limit_up' | 'limit_down';
+
+/**
+ * Bir seansın kapanışı, önceki kapanışa göre tavanda ya da tabanda mı (FR-10, "Tavan Avcısı"). Fiyat akışı
+ * limit dışındaki fiyatı sınıra çektiği için tavanda kapanan hisse tam sınır fiyatıyla kapanır. Önceki
+ * kapanış yoksa (yeni varlık) limit de yoktur, dolayısıyla tavan ya da taban da yoktur.
+ */
+export function limitStateAtClose(close: string, previousClose: string | null): LimitState | null {
+  if (!previousClose) return null;
+  const limits = priceLimits(previousClose);
+  const value = Number(close);
+  if (!limits || !Number.isFinite(value)) return null;
+  if (value >= Number(limits.ceiling)) return 'limit_up';
+  if (value <= Number(limits.floor)) return 'limit_down';
+  return null;
+}
+
 export const MARKET_PHASE_LABELS: Record<MarketPhase, string> = {
   open: 'Seans açık',
   lunch_break: 'Öğle arası',
