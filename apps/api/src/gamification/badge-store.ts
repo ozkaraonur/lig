@@ -1,4 +1,10 @@
-import { type BadgeId, DIVERSE_PORTFOLIO_ASSETS, PODIUM_MAX_RANK, QUEST_HUNTER_QUESTS } from '@lig/shared';
+import {
+  type BadgeId,
+  DIVERSE_PORTFOLIO_ASSETS,
+  PODIUM_MAX_RANK,
+  QUEST_HUNTER_QUESTS,
+  TIER_LEAGUE,
+} from '@lig/shared';
 import { sql } from 'drizzle-orm';
 import { type DbExecutor } from '../xp/xp-ledger';
 
@@ -69,6 +75,11 @@ export async function awardBadges(
         where m.player_id = ${playerId}::uuid and l.tenant_id = ${tenantId}::uuid
           and l.status = 'finished' and l.type <> 'friends' and m.final_rank <= ${PODIUM_MAX_RANK}::int
           and exists (select 1 from virtual_orders o where o.membership_id = m.id)
+          -- Kademe grubunda podyum için yeterli sayıda oyuncu emir vermiş olmalı (K-034).
+          and (l.type <> 'tier' or (
+            select count(*) from memberships m2
+            where m2.league_id = l.id and exists (select 1 from virtual_orders o2 where o2.membership_id = m2.id)
+          ) >= ${TIER_LEAGUE.minParticipants}::int)
       )
       union all
       select 'limit_up_hunter'::text

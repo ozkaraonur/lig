@@ -70,10 +70,10 @@ export function toAdminLeagueView(league: AdminLeagueRecord, now: Date): AdminLe
   };
 }
 
-/** Arkadaş ligleri oyuncuların (FR-09); panelden değiştirilmez. */
+/** Arkadaş ligleri (FR-09) ve kademe grupları (K-034) sistemin; panelden değiştirilmez. */
 function editabilityOf(league: AdminLeagueRecord, now: Date): LeagueEditability {
   const rules = leagueEditability(league, league.memberCount, now);
-  if (league.type !== 'friends') return rules;
+  if (league.type !== 'friends' && league.type !== 'tier') return rules;
   return Object.fromEntries(Object.keys(rules).map((k) => [k, false])) as unknown as LeagueEditability;
 }
 

@@ -459,3 +459,32 @@
 
 - Üyelikten ayrılma, üye çıkarma ve kurucu devri yok (K-033).
 - Kod düz saklanır; veritabanı sızarsa kodlar okunur. Etki yalnızca 10 kişilik kapalı lige girmektir.
+
+## Kademe ligleri: uygulama ayrıntısı (Faz 3, adım 5)
+
+**Kod:** `apps/api/src/tiers/` (`tiers-store.ts` yerleştirme ve görünüm, `tiers.controller.ts`), `packages/shared/src/tiers.ts` (kademeler, hareket hesabı), `apps/api/src/ranking/drizzle-ranking.ts` (`applyTierMovements`), `ranking/league-close.service.ts`, `gamification/badge-store.ts` (Podyum koşulu), migration `0016_tier_leagues.sql`. **Testler:** `tiers.int.test.ts` (gerçek PostgreSQL ve Redis), `tiers.test.ts` (hareket hesabı). Mutasyonla kanıtlandı: yerleştirme kilidini kaldırınca eşzamanlı katılım ve gerçek kapanış testi, kapanıştaki hareket çağrısını kaldırınca gerçek kapanış testi, `WHERE tier = eski` koşulunu kaldırınca eski kapanış testi, emir veren koşulunu kaldırınca iki test, Podyum'daki katılımcı koşulunu kaldırınca rozet testi, görünürlük filtresini ve görev filtresini kaldırınca ilgili testler, gruptaki hafta koşulunu kaldırınca üç test kırmızıya döndü.
+
+| Saldırı ya da hata                                                           | Sonuç                                                                                                     | Test |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---- |
+| Eşzamanlı katılımla 50 kişilik sınırı aşma                                   | (platform, kademe, hafta) danışma kilidi; 60 katılımda 50 + 10                                            | ✓    |
+| Aynı grup numarasını iki kez açma                                            | Tekil indeks `(platform, kademe, hafta başı, grup)`                                                       | ✓    |
+| Aynı hafta ikinci kez katılıp ikinci bakiye alma                             | Mevcut üyelik döner, tek üyelik                                                                           | ✓    |
+| Grubu ya da kademeyi istekle seçme                                           | Uç gövde almaz; kademe `players.tier`'dan, grup sunucuda seçilir                                          | ✓    |
+| Başka platformun grubuna girme ya da başka platformun oyuncusuyla katılma    | Yerleştirme ve sorgular tenant'a bağlı; başka platform üzerinden katılım 404                              | ✓    |
+| Üye olmadan kademe grubunu görme ya da kimlikle normal katılım yoluyla girme | Yalnızca üyeye görünür, normal katılım ucu reddeder                                                       | ✓    |
+| Hiç oynamadan yükselme, ya da hiç oynamayanı düşürme                         | Yalnızca emir veren üyeler hareket hesabına girer                                                         | ✓    |
+| İki kişiyle küçük grupta yükselme                                            | Gruptaki emir veren sayısı 5'ten azsa hareket yok                                                         | ✓    |
+| Eşit sıralarla fazla kişiyi yükseltme                                        | Kotayı aşan eşitlik grubu tümüyle dışarıda kalır                                                          | ✓    |
+| Kapanışı iki kez çalıştırıp iki kademe atlama                                | Kapanış lig kilidiyle tek sefer; `tier_history (oyuncu, lig)` tekil; ikinci uygulama 0 hareket            | ✓    |
+| Geç kapanan eski haftanın güncel kademeyi ezmesi                             | `UPDATE ... WHERE tier = eski`; uygulanmayan hareketin geçmiş kaydı silinir                               | ✓    |
+| Kapanış olup kademe hareketinin yazılmaması (yarım kapanış)                  | Hareket kapanışla aynı transaction'da; biri düşerse ikisi de geri alınır                                  | ✓    |
+| Kademe grubunda üç hesapla Podyum rozeti                                     | Podyum için gruptan en az 5 emir veren gerekir                                                            | ✓    |
+| Haftalık "Bir lige katıl" görevini kademe katılımıyla tamamlama              | Görev kademe grubu üyeliğini saymaz                                                                       | ✓    |
+| Veritabanında bozuk kademe ya da grup (elle)                                 | CHECK: tür ve kademe birlikte, bilinen kademe, kontenjan 2-50                                             | ✓    |
+| Çoklu hesapla kademe yükseltme                                               | Kabul edildi (K-018). Büyür ama kazanç yalnızca kademe etiketi; kimliği doğrulanmış hesap bilgisi pilotta | -    |
+
+**Bilinen açık konular:**
+
+- Çoklu hesapla aynı gruba girip hesapları diğerlerinin üstüne taşımak mümkün (K-034).
+- Haftalık sıfırlama: her hafta yeni 100.000 TL; kademe, yalnızca etiket olarak haftalar arası taşınır.
+- Kademe kuralları kodda sabit, panelden değişmez.

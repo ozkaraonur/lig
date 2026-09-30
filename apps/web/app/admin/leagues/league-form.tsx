@@ -37,7 +37,7 @@ export function fromLocalInput(value: string): string {
 export function valuesFromLeague(l: AdminLeagueView): LeagueFormValues {
   return {
     name: l.name,
-    type: l.type === 'friends' ? 'weekly' : l.type,
+    type: l.type === 'friends' || l.type === 'tier' ? 'weekly' : l.type,
     startsAt: toLocalInput(l.startsAt),
     endsAt: toLocalInput(l.endsAt),
     startingCash: String(Number(l.startingCash)),

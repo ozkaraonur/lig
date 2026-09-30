@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { computeTierMovements, type TierId } from '@lig/shared';
 import { and, asc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
 import { DB, type Database } from '../db/db.module';
 import { CASH_SCALE, formatFixed } from '../orders/fixed-point';
@@ -171,6 +172,7 @@ class DrizzleLeagueCloseTransaction implements LeagueCloseTransaction {
         id: leagues.id,
         tenantId: leagues.tenantId,
         type: leagues.type,
+        tier: leagues.tier,
         status: leagues.status,
         endsAt: leagues.endsAt,
       })
@@ -228,6 +230,42 @@ class DrizzleLeagueCloseTransaction implements LeagueCloseTransaction {
       .update(leagues)
       .set({ status: 'finished', closedAt, closingPrices })
       .where(eq(leagues.id, leagueId));
+  }
+
+  async applyTierMovements(leagueId: string, tier: string): Promise<number> {
+    // Yalnızca emir vermiş üyeler sayılır; hiç oynamayan yükselmez de düşmez (K-034).
+    const result = await this.tx.execute<{ player_id: string; final_rank: number }>(sql`
+      select m.player_id, m.final_rank from memberships m
+      where m.league_id = ${leagueId}::uuid and m.final_rank is not null
+        and exists (select 1 from virtual_orders o where o.membership_id = m.id)
+    `);
+    const movements = computeTierMovements(
+      tier as TierId,
+      result.rows.map((r) => ({ playerId: r.player_id, rank: Number(r.final_rank) })),
+    );
+    let applied = 0;
+    for (const move of movements) {
+      const inserted = await this.tx.execute(sql`
+        insert into tier_history (player_id, league_id, from_tier, to_tier, rank)
+        values (${move.playerId}::uuid, ${leagueId}::uuid, ${move.from}, ${move.to}, ${move.rank}::int)
+        on conflict do nothing
+        returning player_id
+      `);
+      if (inserted.rows.length === 0) continue;
+      // Yalnızca hâlâ eski kademedeyse değişir: geç kapanan eski bir hafta güncel kademeyi ezmez.
+      const updated = await this.tx.execute(sql`
+        update players set tier = ${move.to} where id = ${move.playerId}::uuid and tier = ${move.from}
+        returning id
+      `);
+      if (updated.rows.length === 0) {
+        await this.tx.execute(sql`
+          delete from tier_history where player_id = ${move.playerId}::uuid and league_id = ${leagueId}::uuid
+        `);
+        continue;
+      }
+      applied += 1;
+    }
+    return applied;
   }
 
   async enqueueBadgeChecks(leagueId: string): Promise<void> {

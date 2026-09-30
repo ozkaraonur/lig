@@ -1,6 +1,7 @@
 /** Değerler veritabanındaki enum'larla birebir aynıdır (apps/api/src/db/schema.ts). */
 
-export const LEAGUE_TYPES = ['weekly', 'season', 'friends'] as const;
+/** `tier`: haftalık kademe grubu (K-034). `friends`: arkadaş ligi (K-033). İkisi de yalnızca üyesine görünür. */
+export const LEAGUE_TYPES = ['weekly', 'season', 'friends', 'tier'] as const;
 export type LeagueType = (typeof LEAGUE_TYPES)[number];
 
 export const LEAGUE_STATUSES = ['draft', 'active', 'finished'] as const;

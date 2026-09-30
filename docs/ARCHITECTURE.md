@@ -121,6 +121,13 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 - Kapanışta XP yazılmaz (`LeagueCloseService`), rozetler saymaz (`awardBadges`), "Bir lige katıl" görevi saymaz (`questStore.count`). Yönetici metriklerinin lig listesinde görünmez.
 - Web: ana ekranda "Arkadaş ligi" paneli (`friends-panel.tsx`: kur, koda katıl); lig sayfasında davet kodu (`formatInviteCode`).
 
+## Kademe ligleri (K-034)
+
+- Oyuncunun kademesi `players.tier` (Bronz, Gümüş, Altın, Platin, Efsane). `POST /tiers/join` kademesindeki bu haftanın grubuna yerleştirir (`tiers-store.ts`, (platform, kademe, hafta) danışma kilidi, en fazla 50 kişi, dolunca yeni grup); `GET /tiers/me` kademe, bu haftaki grup ve son hareketi döner.
+- Grup `type = 'tier'` bir `leagues` satırıdır (hafta: pazartesi 00:00 Türkiye ile sonraki pazartesi). Emir, sıralama ve kapanış mevcut altyapıyı kullanır; yalnızca üyesine görünür.
+- Kapanışta `LeagueCloseService` nihai sıralardan sonra `applyTierMovements` çağırır: emir veren üyelerde üst %20 bir kademe çıkar, alt %20 iner (`computeTierMovements`, saf fonksiyon, en az 5 katılımcı). Hareketler `tier_history` tablosunda, kapanışla aynı transaction'da.
+- Web: ana ekranda "Kademe ligi" paneli (`tier-panel.tsx`): kademe, bu haftaki grup bağlantısı, gruba katıl, son kademe değişimi.
+
 ## Webhook (FR-31) ve "Gerçek hesabıma geç" (FR-08)
 
 1. Oyuncu lig ekranında "Gerçek hesabıma geç"e dokunur; `tenants.real_trade_url` (yalnızca http/https) açılır.

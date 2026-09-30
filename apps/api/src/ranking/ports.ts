@@ -50,6 +50,7 @@ export interface ClosingLeague {
   id: string;
   tenantId: string;
   type: LeagueType;
+  tier: string | null;
   status: string;
   endsAt: Date;
 }
@@ -68,6 +69,11 @@ export interface LeagueCloseTransaction {
    * transaction'da: kapanış olur da sinyal kaybolmaz ("Lig Bitirici", "Podyum").
    */
   enqueueBadgeChecks(leagueId: string): Promise<void>;
+  /**
+   * Kademe grubunda üst ve alt dilimin kademesini değiştirir (K-034). Kapanışla aynı transaction'da, nihai
+   * sıralar yazıldıktan sonra. (oyuncu, lig) tekil olduğu için aynı kapanış iki kez uygulanamaz.
+   */
+  applyTierMovements(leagueId: string, tier: string): Promise<number>;
 }
 
 export interface LeagueCloseUnitOfWork {
