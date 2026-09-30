@@ -4,6 +4,7 @@ import {
   formatCashTr,
   formatDecimalTr,
   type JoinLeagueResponse,
+  formatInviteCode,
   type LeagueAssetPrice,
   type LeagueDetail,
   type MeResponse,
@@ -161,6 +162,13 @@ export default function LeaguePage() {
         {league.maxMembers !== null ? ` / ${league.maxMembers}` : ''} oyuncu
         {!league.lateJoinAllowed && league.phase === 'upcoming' && ' · Başladıktan sonra katılım kapanır'}
       </p>
+
+      {league.inviteCode && (
+        <p>
+          Davet kodu: <strong className="invite-code">{formatInviteCode(league.inviteCode)}</strong>{' '}
+          <span className="muted">Arkadaşlarına ilet; yalnızca kodu bilenler katılabilir.</span>
+        </p>
+      )}
 
       {league.joined ? (
         portfolio ? (

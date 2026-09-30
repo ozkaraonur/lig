@@ -37,6 +37,9 @@ async function addLeague(
       endsAt: at(4),
       startingCash: '100000.00',
       assetIds: [],
+      ...(values.type === 'friends'
+        ? { inviteCode: randomUUID().slice(0, 10).toUpperCase(), maxMembers: 10 }
+        : {}),
       ...values,
     })
     .returning({ id: leagues.id });

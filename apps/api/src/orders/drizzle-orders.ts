@@ -49,7 +49,6 @@ class DrizzleOrderTransaction implements OrderTransaction {
       where l.id = ${leagueId}::uuid
         and l.tenant_id = ${tenantId}::uuid
         and l.status in ('active', 'finished')
-        and l.type <> 'friends'
       for share
     `);
     const row = result.rows[0];

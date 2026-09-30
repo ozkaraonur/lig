@@ -23,6 +23,7 @@ import {
 } from '@lig/shared';
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -199,11 +200,21 @@ export const leagues = pgTable(
     maxMembers: integer(),
     /** Katılım koşulu (FR-20): lig başladıktan sonra katılım. */
     lateJoinAllowed: boolean().notNull().default(true),
+    /** Arkadaş ligi davet kodu (FR-09, K-033). Yalnızca `type = 'friends'` liglerde dolu; tekil. */
+    inviteCode: text().unique(),
+    /** Arkadaş ligini kuran oyuncu. Oyuncu silinirse lig kalır. */
+    ownerPlayerId: uuid().references((): AnyPgColumn => players.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
     updatedAt: timestamp({ withTimezone: true }),
   },
   (t) => [
     index().on(t.tenantId, t.status),
+    // Arkadaş ligi küçük ve kodla girilir; kontenjan ve kod veritabanında zorunlu (K-033).
+    check(
+      'leagues_friends_shape',
+      sql`${t.type} <> 'friends' or (${t.inviteCode} is not null and ${t.maxMembers} is not null and ${t.maxMembers} between 2 and 10)`,
+    ),
+    check('leagues_invite_only_friends', sql`${t.inviteCode} is null or ${t.type} = 'friends'`),
     check('leagues_max_members_positive', sql`${t.maxMembers} is null or ${t.maxMembers} > 0`),
     check('leagues_ends_after_starts', sql`${t.endsAt} > ${t.startsAt}`),
     check('leagues_starting_cash_positive', sql`${t.startingCash} > 0`),

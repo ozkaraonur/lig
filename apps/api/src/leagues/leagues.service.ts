@@ -51,6 +51,8 @@ export class LeaguesService {
     ]);
     return {
       ...toSummary(league, now),
+      // Davet kodu yalnızca üyeye görünür; arkadaş ligi zaten yalnızca üyeye döner.
+      inviteCode: league.joined ? league.inviteCode : null,
       canJoin: !league.joined && canJoinLeague(league, now),
       assets,
       membership: membership ? toMembership(membership) : null,

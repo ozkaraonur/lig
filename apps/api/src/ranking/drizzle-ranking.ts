@@ -167,7 +167,13 @@ class DrizzleLeagueCloseTransaction implements LeagueCloseTransaction {
 
   async lockLeague(leagueId: string): Promise<ClosingLeague | null> {
     const [row] = await this.tx
-      .select({ id: leagues.id, tenantId: leagues.tenantId, status: leagues.status, endsAt: leagues.endsAt })
+      .select({
+        id: leagues.id,
+        tenantId: leagues.tenantId,
+        type: leagues.type,
+        status: leagues.status,
+        endsAt: leagues.endsAt,
+      })
       .from(leagues)
       .where(eq(leagues.id, leagueId))
       .for('update');

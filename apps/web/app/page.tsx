@@ -4,6 +4,7 @@ import { type MeResponse } from '@lig/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiRequestError, MOCK_PLATFORM_URL } from '../lib/api';
 import { BrandingStyle, BrandLogo } from './branding';
+import { FriendsPanel } from './friends-panel';
 import { LeagueList } from './league-list';
 import { ProfileCard } from './profile-card';
 import { QuestList } from './quest-list';
@@ -70,6 +71,7 @@ export default function PlayerHome() {
           </div>
           <RealAccountLink platform={state.platform} />
           <LeagueList />
+          <FriendsPanel />
           <StreakCard onXpChange={load} />
           <QuestList onProgress={load} />
           <ProfileCard displayName={state.player.displayName} />

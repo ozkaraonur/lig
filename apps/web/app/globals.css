@@ -786,3 +786,25 @@ input[type='color'] {
   background: var(--surface);
   color: var(--text);
 }
+
+.friends-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.field input {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.invite-code {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.08em;
+}

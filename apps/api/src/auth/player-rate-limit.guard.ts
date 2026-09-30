@@ -18,6 +18,8 @@ export const RATE_LIMITS = {
   orders: { name: 'orders', limit: 30, windowSeconds: 60 },
   realTradeClick: { name: 'real-trade-click', limit: 20, windowSeconds: 60 },
   profileWrite: { name: 'profile-write', limit: 20, windowSeconds: 60 },
+  friendsCreate: { name: 'friends-create', limit: 5, windowSeconds: 60 },
+  friendsJoin: { name: 'friends-join', limit: 10, windowSeconds: 60 },
 } satisfies Record<string, RateLimitPolicy>;
 
 const RATE_LIMIT_METADATA = 'lig:rate-limit-policy';

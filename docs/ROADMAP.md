@@ -62,7 +62,7 @@ Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı
 - [x] Yeni görev şablonları: çeşitlendirme ("3 farklı sektörden varlık al", K-029)
 - [ ] Karşılıksız günlük tahmin: doğruysa az XP, yanlışsa kayıp yok, günde 1
 - [x] Rozetler, unvanlar ve profil çerçeveleri (FR-10), "Tavan Avcısı" dahil (K-030, K-031). Temettü Emeklisi ve Açığa Satış Üstadı Faz 4'te
-- [ ] Arkadaş ligi ve davet kodu (FR-09)
+- [x] Arkadaş ligi ve davet kodu (FR-09, K-033)
 - [ ] AI koç: davranış analizi, LLM, al/sat filtresi, yanıt kaydı (FR-11)
 - [ ] CSV dışa aktarma (FR-25)
 

@@ -14,6 +14,8 @@ export interface LeagueRecord {
   closingPrices: Record<string, string | null> | null;
   maxMembers: number | null;
   lateJoinAllowed: boolean;
+  /** Arkadaş ligi davet kodu. Yalnızca üyeye görünen liglerde dolu olabilir (FR-09). */
+  inviteCode: string | null;
   memberCount: number;
   /** Soran oyuncu bu ligin üyesi mi. */
   joined: boolean;
@@ -38,8 +40,8 @@ export interface MembershipRecord {
 
 export interface LeagueRepository {
   /**
-   * Oyuncunun görebileceği ligler: kendi platformunun, yayındaki ya da yakın zamanda kapanmış,
-   * arkadaş ligi olmayan ligler. Taslaklar ve başka platformların ligleri asla dönmez (T4).
+   * Oyuncunun görebileceği ligler: kendi platformunun, yayındaki ya da yakın zamanda kapanmış ligler.
+   * Arkadaş ligi yalnızca üyesine görünür (FR-09). Taslaklar ve başka platformların ligleri asla dönmez (T4).
    */
   listVisible(tenantId: string, playerId: string, now: Date): Promise<LeagueRecord[]>;
   findVisible(tenantId: string, leagueId: string, playerId: string): Promise<LeagueRecord | null>;
