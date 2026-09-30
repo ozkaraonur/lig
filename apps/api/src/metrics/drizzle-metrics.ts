@@ -170,7 +170,7 @@ export class DrizzleMetricsRepository implements MetricsRepository {
             and c.created_at >= ${from}::timestamptz
             and c.created_at < ${to}::timestamptz)::int as real_trade_clicks
       from leagues l
-      where l.tenant_id = ${tenantId}::uuid and l.type <> 'friends'
+      where l.tenant_id = ${tenantId}::uuid and l.type not in ('friends', 'tier')
       order by l.starts_at desc, l.id
       limit ${LEAGUE_ROW_LIMIT}
     `);

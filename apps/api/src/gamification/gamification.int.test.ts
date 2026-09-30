@@ -478,7 +478,8 @@ describe('outbox worker ile kazanım (K-013)', () => {
     await order(p.membershipId, asset.bank);
     await ctx.db.insert(outboxEvents).values({ tenantId, playerId: p.playerId, type: 'badge_recheck' });
 
-    const worker = new OutboxWorker(ctx.db, env, () => Date.now());
+    // Docker saati Node saatinden biraz ileri olabilir; olay `available_at` ile şimdiyi karşılaştırır. Bir dakika pay.
+    const worker = new OutboxWorker(ctx.db, env, () => Date.now() + 60_000);
     while ((await worker.runOnce()) > 0) {
       /* parti bitene kadar */
     }

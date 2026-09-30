@@ -17,3 +17,4 @@ export * from './quests';
 export * from './ranking';
 export * from './schemas';
 export * from './streak';
+export * from './tiers';

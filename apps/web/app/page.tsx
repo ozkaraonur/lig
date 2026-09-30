@@ -10,6 +10,7 @@ import { ProfileCard } from './profile-card';
 import { QuestList } from './quest-list';
 import { RealAccountLink } from './real-account-link';
 import { StreakCard } from './streak-card';
+import { TierPanel } from './tier-panel';
 import { VirtualMoneyNotice } from './virtual-money-notice';
 
 type State =
@@ -71,6 +72,7 @@ export default function PlayerHome() {
           </div>
           <RealAccountLink platform={state.platform} />
           <LeagueList />
+          <TierPanel />
           <FriendsPanel />
           <StreakCard onXpChange={load} />
           <QuestList onProgress={load} />

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, notInArray, or, type SQL, sql } from 'drizzle-orm';
 import { DB, type Database } from '../db/db.module';
 import { assets, leagues, memberships } from '../db/schema';
 import {
@@ -91,7 +91,7 @@ export class DrizzleLeagueRepository implements LeagueRepository {
           where l.id = ${leagueId}::uuid
             and l.tenant_id = ${tenantId}::uuid
             and l.status = 'active'
-            and l.type <> 'friends'
+            and l.type not in ('friends', 'tier')
             and l.ends_at > ${nowIso}::timestamptz
             and (l.late_join_allowed or l.starts_at > ${nowIso}::timestamptz)
             and (l.max_members is null
@@ -120,13 +120,13 @@ export class DrizzleLeagueRepository implements LeagueRepository {
     });
   }
 
-  /** Arkadaş ligi yalnızca üyesine görünür: üye olmayan için yok ile aynı yanıt (T4, K-033). */
+  /** Arkadaş ligi ve kademe grubu yalnızca üyesine görünür: üye olmayan için yok ile aynı yanıt (T4, K-033, K-034). */
   private visibleTo(tenantId: string, playerId: string): SQL | undefined {
     return and(
       eq(leagues.tenantId, tenantId),
       inArray(leagues.status, ['active', 'finished']),
       or(
-        ne(leagues.type, 'friends'),
+        notInArray(leagues.type, ['friends', 'tier']),
         sql`exists (select 1 from memberships m where m.league_id = leagues.id and m.player_id = ${playerId}::uuid)`,
       ),
     );

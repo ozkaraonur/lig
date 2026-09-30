@@ -18,6 +18,7 @@ import {
   PLATFORM_EVENT_TYPES,
   QUEST_PERIODS,
   QUEST_TEMPLATES,
+  TIER_IDS,
   TITLE_IDS,
   XP_REASONS,
 } from '@lig/shared';
@@ -204,6 +205,9 @@ export const leagues = pgTable(
     inviteCode: text().unique(),
     /** Arkadaş ligini kuran oyuncu. Oyuncu silinirse lig kalır. */
     ownerPlayerId: uuid().references((): AnyPgColumn => players.id, { onDelete: 'set null' }),
+    /** Kademe grubu ligi (K-034): kademe ve o kademedeki grup numarası. Yalnızca `type = 'tier'`. */
+    tier: text(),
+    tierGroup: integer(),
     createdAt: createdAt(),
     updatedAt: timestamp({ withTimezone: true }),
   },
@@ -215,6 +219,17 @@ export const leagues = pgTable(
       sql`${t.type} <> 'friends' or (${t.inviteCode} is not null and ${t.maxMembers} is not null and ${t.maxMembers} between 2 and 10)`,
     ),
     check('leagues_invite_only_friends', sql`${t.inviteCode} is null or ${t.type} = 'friends'`),
+    // Kademe grubu: kademe ve grup numarası zorunlu, en fazla 50 kişi; başka ligde bu alanlar boş (K-034).
+    check(
+      'leagues_tier_shape',
+      // Enum değeri metne çevrilir: aynı migration'da eklenen yeni enum değeri doğrudan kullanılamaz.
+      sql`(${t.type}::text = 'tier') = (${t.tier} is not null and ${t.tierGroup} is not null)
+        and (${t.type}::text <> 'tier' or ${t.maxMembers} between 2 and 50)
+        and (${t.tier} is null or ${t.tier} in (${inList(TIER_IDS)}))`,
+    ),
+    // Aynı platformda, kademede ve haftada aynı grup numarası iki kez açılamaz (eşzamanlı katılımda çift grup olmaz).
+    // Kademe ve grup boş olan liglerde NULL'lar birbirinden farklı sayılır, bu yüzden diğer ligler etkilenmez.
+    uniqueIndex('leagues_tier_group_unique').on(t.tenantId, t.tier, t.startsAt, t.tierGroup),
     check('leagues_max_members_positive', sql`${t.maxMembers} is null or ${t.maxMembers} > 0`),
     check('leagues_ends_after_starts', sql`${t.endsAt} > ${t.startsAt}`),
     check('leagues_starting_cash_positive', sql`${t.startingCash} > 0`),
@@ -236,6 +251,8 @@ export const players = pgTable(
     selectedTitle: text(),
     /** Oyuncunun seçtiği profil çerçevesi. Yalnızca kazandığı rozetin çerçevesi seçilebilir. */
     selectedFrame: text(),
+    /** Kademe (K-034). Haftalık kademe ligi kapanışında yükselir ya da düşer; yalnızca görünüm. */
+    tier: text().notNull().default('bronze'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -249,6 +266,7 @@ export const players = pgTable(
       'players_selected_frame_known',
       sql`${t.selectedFrame} is null or ${t.selectedFrame} in (${inList(FRAME_IDS)})`,
     ),
+    check('players_tier_known', sql`${t.tier} in (${inList(TIER_IDS)})`),
   ],
 );
 
@@ -313,6 +331,33 @@ export const xpJokers = pgTable(
   (t) => [
     unique().on(t.playerId, t.sourceId),
     check('xp_jokers_window', sql`(${t.activatedAt} is null) = (${t.expiresAt} is null)`),
+  ],
+);
+
+/**
+ * Kademe hareketleri (K-034). Kapanan kademe grubunun her hareketi bir satırdır; (oyuncu, lig) tekil olduğu için
+ * aynı kapanış iki kez uygulanamaz. Oyuncunun güncel kademesi `players.tier`'dadır.
+ */
+export const tierHistory = pgTable(
+  'tier_history',
+  {
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    leagueId: uuid()
+      .notNull()
+      .references(() => leagues.id, { onDelete: 'cascade' }),
+    fromTier: text().notNull(),
+    toTier: text().notNull(),
+    rank: integer().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.playerId, t.leagueId] }),
+    check(
+      'tier_history_known',
+      sql`${t.fromTier} in (${inList(TIER_IDS)}) and ${t.toTier} in (${inList(TIER_IDS)})`,
+    ),
   ],
 );
 

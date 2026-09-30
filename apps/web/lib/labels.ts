@@ -54,6 +54,7 @@ export const LEAGUE_TYPE_LABELS: Record<LeagueType, string> = {
   weekly: 'Haftalık',
   season: 'Sezon',
   friends: 'Arkadaş',
+  tier: 'Kademe',
 };
 
 export const LEAGUE_PHASE_LABELS: Record<LeaguePhase, string> = {

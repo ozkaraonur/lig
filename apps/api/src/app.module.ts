@@ -9,6 +9,7 @@ import { ConfigModule } from './config/config.module';
 import { DbModule } from './db/db.module';
 import { FriendsModule } from './friends/friends.module';
 import { GamificationModule } from './gamification/gamification.module';
+import { TiersModule } from './tiers/tiers.module';
 import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
 import { MetricsModule } from './metrics/metrics.module';
@@ -36,6 +37,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     QuestsModule,
     GamificationModule,
     FriendsModule,
+    TiersModule,
     WebhooksModule,
     AdminAuthModule,
     AdminTeamModule,

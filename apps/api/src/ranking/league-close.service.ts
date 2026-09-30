@@ -46,6 +46,7 @@ export class LeagueCloseService {
       const xpGranted =
         league.type === 'friends' ? 0 : await tx.grantXp(computeRewards(league.id, standings, traded));
       await tx.markClosed(league.id, now, Object.fromEntries(priceByAsset));
+      if (league.type === 'tier' && league.tier) await tx.applyTierMovements(league.id, league.tier);
       await tx.enqueueBadgeChecks(league.id);
       return { closed: true, players: standings.length, xpGranted };
     });
