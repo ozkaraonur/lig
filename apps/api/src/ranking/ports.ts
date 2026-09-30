@@ -1,3 +1,4 @@
+import { type LeagueType } from '@lig/shared';
 import { type MemberHolding, type Standing, type XpGrant } from './standings';
 
 export interface RankableLeague {
@@ -48,6 +49,7 @@ export interface FinalStandingsReader {
 export interface ClosingLeague {
   id: string;
   tenantId: string;
+  type: LeagueType;
   status: string;
   endsAt: Date;
 }

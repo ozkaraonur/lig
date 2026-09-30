@@ -42,7 +42,9 @@ export class LeagueCloseService {
       const traded = await tx.membershipsWithOrders(league.id);
 
       await tx.saveFinalStandings(standings);
-      const xpGranted = await tx.grantXp(computeRewards(league.id, standings, traded));
+      // Arkadaş ligi XP vermez: iki hesapla kasten kaybedip XP taşımak mümkün olurdu (K-017, K-033).
+      const xpGranted =
+        league.type === 'friends' ? 0 : await tx.grantXp(computeRewards(league.id, standings, traded));
       await tx.markClosed(league.id, now, Object.fromEntries(priceByAsset));
       await tx.enqueueBadgeChecks(league.id);
       return { closed: true, players: standings.length, xpGranted };

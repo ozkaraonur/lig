@@ -7,6 +7,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { DbModule } from './db/db.module';
+import { FriendsModule } from './friends/friends.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
@@ -34,6 +35,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     RankingModule,
     QuestsModule,
     GamificationModule,
+    FriendsModule,
     WebhooksModule,
     AdminAuthModule,
     AdminTeamModule,

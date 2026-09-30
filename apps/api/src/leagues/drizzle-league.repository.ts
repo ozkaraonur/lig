@@ -21,7 +21,10 @@ export class DrizzleLeagueRepository implements LeagueRepository {
     const recentCutoff = new Date(now.getTime() - FINISHED_LEAGUE_VISIBILITY_DAYS * DAY_MS);
     return this.selectLeagues(
       playerId,
-      and(this.visibleTo(tenantId), or(eq(leagues.status, 'active'), gt(leagues.endsAt, recentCutoff))),
+      and(
+        this.visibleTo(tenantId, playerId),
+        or(eq(leagues.status, 'active'), gt(leagues.endsAt, recentCutoff)),
+      ),
     )
       .orderBy(asc(leagues.startsAt), asc(leagues.id))
       .limit(MAX_LISTED_LEAGUES);
@@ -30,7 +33,7 @@ export class DrizzleLeagueRepository implements LeagueRepository {
   async findVisible(tenantId: string, leagueId: string, playerId: string): Promise<LeagueRecord | null> {
     const [row] = await this.selectLeagues(
       playerId,
-      and(this.visibleTo(tenantId), eq(leagues.id, leagueId)),
+      and(this.visibleTo(tenantId, playerId), eq(leagues.id, leagueId)),
     ).limit(1);
     return row ?? null;
   }
@@ -117,11 +120,15 @@ export class DrizzleLeagueRepository implements LeagueRepository {
     });
   }
 
-  private visibleTo(tenantId: string): SQL | undefined {
+  /** Arkadaş ligi yalnızca üyesine görünür: üye olmayan için yok ile aynı yanıt (T4, K-033). */
+  private visibleTo(tenantId: string, playerId: string): SQL | undefined {
     return and(
       eq(leagues.tenantId, tenantId),
       inArray(leagues.status, ['active', 'finished']),
-      ne(leagues.type, 'friends'),
+      or(
+        ne(leagues.type, 'friends'),
+        sql`exists (select 1 from memberships m where m.league_id = leagues.id and m.player_id = ${playerId}::uuid)`,
+      ),
     );
   }
 
@@ -140,6 +147,7 @@ export class DrizzleLeagueRepository implements LeagueRepository {
         closingPrices: leagues.closingPrices,
         maxMembers: leagues.maxMembers,
         lateJoinAllowed: leagues.lateJoinAllowed,
+        inviteCode: leagues.inviteCode,
         // Düz SQL: Drizzle, sql içindeki leagues.id referansını tablo adı olmadan yazar, alt sorguda "id"
         // memberships tablosuna bağlanırdı (entegrasyon testi bunu yakaladı).
         memberCount: sql<number>`(select count(*) from memberships m where m.league_id = leagues.id)::int`,

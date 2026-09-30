@@ -113,6 +113,14 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 - Joker: `activateJoker` oyuncu satırını kilitleyip tek etkin jokere izin verir, 7 gün sürer. `evaluatePlayerQuests` görev XP'sini yeni verdiğinde olay anında etkin joker varsa aynı miktarı `joker_bonus` olarak bir kez daha verir.
 - API: `GET /streak`, `POST /streak/visit`, `POST /streak/joker/activate` (yazanlar dakikada 20). Web: ana ekranda "Günlük seri" kartı (`streak-card.tsx`); ekran açılınca bugünü yazar.
 
+## Arkadaş ligi ve davet kodu (FR-09, K-033)
+
+- Oyuncu `POST /friends/leagues` ile kurar (`{ name, durationDays }`, dakikada 5), `POST /friends/join` ile koda katılır (`{ code }`, dakikada 10). İkisi de `friends-store.ts` içinde tek transaction; kurma oyuncu kilidiyle, katılma normal katılımla aynı lig kilidiyle sıralanır.
+- Kurallar `FRIENDS_LEAGUE` sabiti ve veritabanı CHECK kısıtlarında: 10 üye, 100.000 TL, 7/14/30 gün, oyuncu başına 3 etkin lig.
+- Arkadaş ligi `type = 'friends'`. `visibleTo` yalnızca üyesine gösterir; `GET /leagues` ve `GET /leagues/:id` üyeye davet kodunu döner. Emir, portföy, sıralama ve kapanış mevcut altyapıyı kullanır.
+- Kapanışta XP yazılmaz (`LeagueCloseService`), rozetler saymaz (`awardBadges`), "Bir lige katıl" görevi saymaz (`questStore.count`). Yönetici metriklerinin lig listesinde görünmez.
+- Web: ana ekranda "Arkadaş ligi" paneli (`friends-panel.tsx`: kur, koda katıl); lig sayfasında davet kodu (`formatInviteCode`).
+
 ## Webhook (FR-31) ve "Gerçek hesabıma geç" (FR-08)
 
 1. Oyuncu lig ekranında "Gerçek hesabıma geç"e dokunur; `tenants.real_trade_url` (yalnızca http/https) açılır.

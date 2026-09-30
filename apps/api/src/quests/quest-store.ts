@@ -65,9 +65,11 @@ export const questStore = {
     let query;
     switch (template) {
       case 'join_league':
+        // Arkadaş ligine katılmak sayılmaz: kodla girmek ve kendi ligini kurmak görev XP'si çiftliğine dönerdi (K-033).
         query = sql`
           select count(*)::int as n from memberships m join leagues l on l.id = m.league_id
-          where m.player_id = ${playerId}::uuid and l.tenant_id = ${tenantId}::uuid and ${inWindow('m.joined_at')}`;
+          where m.player_id = ${playerId}::uuid and l.tenant_id = ${tenantId}::uuid
+            and l.type <> 'friends' and ${inWindow('m.joined_at')}`;
         break;
       case 'place_orders':
         query = sql`

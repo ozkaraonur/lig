@@ -431,3 +431,31 @@
 
 - Ziyaret tek istekle yazılabilir; bu yüzden seri bir "sadakat" göstergesi, beceri göstergesi değil. Sıkılaştırma seçeneği K-032'de.
 - Joker yalnızca görev XP'sini 2 katlar. Lig sonu XP'si, seri XP'si ve rozetler etkilenmez. Bu bilinçli: portföyü ve sıralamayı etkileyen joker alınmadı (K-017).
+
+## Arkadaş ligi ve davet kodu: uygulama ayrıntısı (Faz 3, adım 4)
+
+**Kod:** `apps/api/src/friends/` (`friends-store.ts` kurma ve koda katılma, `friends.controller.ts`), `packages/shared/src/friends.ts` (kurallar, kod biçimi, şemalar), `apps/api/src/leagues/drizzle-league.repository.ts` (üye görünürlüğü), `ranking/league-close.service.ts` (XP yok), `quests/quest-store.ts` (katılım görevi), migration `0015_friends_leagues_invite_code.sql`. **Testler:** `friends.int.test.ts` (gerçek PostgreSQL ve Redis), `friends.test.ts` (kod ve şema). Mutasyonla kanıtlandı: katılımdaki lig kilidini kaldırınca kontenjan testi, kurmadaki oyuncu kilidini kaldırınca eşzamanlı kurma testi, kapanıştaki arkadaş ligi XP istisnasını kaldırınca kapanış testi, görevdeki arkadaş ligi filtresini kaldırınca görev testi, görünürlükteki üyelik koşulunu kaldırınca görünürlük testi, koda katılmadaki tenant koşulunu kaldırınca 404 testi kırmızıya döndü.
+
+| Saldırı ya da hata                                                 | Sonuç                                                                                      | Test |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ---- |
+| Kodu deneyerek başkasının ligini bulma                             | ~50 bit kod, oyuncu başına dakikada 10 deneme (429); yanlış kod her zaman aynı 404         | ✓    |
+| Başka platformun davet kodunu kullanma                             | Kod yalnızca oyuncunun tenant'ında aranır; yanlış kodla aynı 404                           | ✓    |
+| Normal ligin kimliğini kod diye deneme                             | Arama `type = 'friends'` ile sınırlı; aynı 404                                             | ✓    |
+| Üye olmadan arkadaş ligini görme (liste, detay, sıralama, kod)     | Yalnızca üyeye görünür, diğerleri için "yok" ile aynı yanıt; kod yalnızca üyeye döner      | ✓    |
+| Kimlikle normal katılım ucundan arkadaş ligine girme               | `createMembership` arkadaş ligini reddeder, yalnızca kodla girilir                         | ✓    |
+| Kontenjanı (10) eşzamanlı katılımla aşma                           | Lig başına danışma kilidi; 25 eşzamanlı katılımda tam 10 üye                               | ✓    |
+| Aynı oyuncunun eşzamanlı katılımıyla çift üyelik (çift bakiye)     | Kilit, mevcut üyelik kontrolü ve `(lig, oyuncu)` tekilliği: tek üyelik                     | ✓    |
+| Süresi dolmuş arkadaş ligine katılma                               | 409                                                                                        | ✓    |
+| Sınırsız lig kurup sistemi şişirme                                 | Oyuncu başına en fazla 3 etkin lig; oyuncu kilidiyle eşzamanlı 8 istekte 3 lig; 5/dk sınır | ✓    |
+| Bakiye, kontenjan, tür ya da varlığı istekle belirleme             | Katı şema 400; değerler kodda sabit; veritabanı CHECK kısıtları                            | ✓    |
+| Kurulu ligin kodunu boşaltıp ya da kontenjanı büyütüp kuralı bozma | `leagues_friends_shape` ve `leagues_invite_only_friends` kısıtları                         | ✓    |
+| Başka platformun oyuncusu için lig kurma                           | 404; oyuncu ve varlıklar tenant'a bağlı                                                    | ✓    |
+| İki hesapla arkadaş ligi kurup kasten kaybederek XP taşıma         | Arkadaş ligi XP vermez; Lig Bitirici ve Podyum saymaz                                      | ✓    |
+| Kendi arkadaş ligini kurup "Bir lige katıl" görevi toplama         | Görev arkadaş ligi üyeliğini saymaz                                                        | ✓    |
+| Çoklu hesap ile arkadaş ligini doldurma                            | Kabul edildi (K-018). Ödül yok, risk büyümez                                               | -    |
+| Kod çakışması                                                      | `ON CONFLICT DO NOTHING` ile yeni kod denenir                                              | ✓    |
+
+**Bilinen açık konular:**
+
+- Üyelikten ayrılma, üye çıkarma ve kurucu devri yok (K-033).
+- Kod düz saklanır; veritabanı sızarsa kodlar okunur. Etki yalnızca 10 kişilik kapalı lige girmektir.

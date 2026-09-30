@@ -100,6 +100,8 @@ export interface LeagueMembership {
 }
 
 export interface LeagueDetail extends LeagueSummary {
+  /** Arkadaş ligi davet kodu (FR-09). Yalnızca üyeye görünür; diğer liglerde null. */
+  inviteCode: string | null;
   canJoin: boolean;
   assets: LeagueAsset[];
   membership: LeagueMembership | null;

@@ -264,6 +264,8 @@ describe('Lig Bitirici, Podyum', () => {
         endsAt: new Date('2026-09-10T00:00:00Z'),
         startingCash: '1000.00',
         assetIds: [asset.bank],
+        inviteCode: randomUUID().slice(0, 10).toUpperCase(),
+        maxMembers: 10,
       })
       .returning({ id: leagues.id });
     const p = await finishWith(1, true, friends!.id);

@@ -15,6 +15,7 @@ export interface StoredLeague {
   closingPrices?: Record<string, string | null> | null;
   maxMembers?: number | null;
   lateJoinAllowed?: boolean;
+  inviteCode?: string | null;
 }
 
 /**
@@ -63,11 +64,13 @@ export class InMemoryLeagueRepository implements LeagueRepository {
   }
 
   async listVisible(tenantId: string, playerId: string): Promise<LeagueRecord[]> {
-    return this.leagues.filter((l) => this.isVisible(l, tenantId)).map((l) => this.toRecord(l, playerId));
+    return this.leagues
+      .filter((l) => this.isVisible(l, tenantId, playerId))
+      .map((l) => this.toRecord(l, playerId));
   }
 
   async findVisible(tenantId: string, leagueId: string, playerId: string): Promise<LeagueRecord | null> {
-    const league = this.leagues.find((l) => l.id === leagueId && this.isVisible(l, tenantId));
+    const league = this.leagues.find((l) => l.id === leagueId && this.isVisible(l, tenantId, playerId));
     return league ? this.toRecord(league, playerId) : null;
   }
 
@@ -108,8 +111,10 @@ export class InMemoryLeagueRepository implements LeagueRepository {
     return membership;
   }
 
-  private isVisible(l: StoredLeague, tenantId: string): boolean {
-    return l.tenantId === tenantId && l.status !== 'draft' && l.type !== 'friends';
+  private isVisible(l: StoredLeague, tenantId: string, playerId: string): boolean {
+    // Arkadaş ligi yalnızca üyesine görünür (K-033).
+    const member = this.memberships.some((m) => m.leagueId === l.id && m.playerId === playerId);
+    return l.tenantId === tenantId && l.status !== 'draft' && (l.type !== 'friends' || member);
   }
 
   private toRecord(l: StoredLeague, playerId: string): LeagueRecord {
@@ -119,6 +124,7 @@ export class InMemoryLeagueRepository implements LeagueRepository {
       closingPrices: l.closingPrices ?? null,
       maxMembers: l.maxMembers ?? null,
       lateJoinAllowed: l.lateJoinAllowed ?? true,
+      inviteCode: l.inviteCode ?? null,
       memberCount: members.length,
       joined: members.some((m) => m.playerId === playerId),
     };

@@ -7,6 +7,7 @@ export * from './branding';
 export * from './domain';
 export * from './errors';
 export * from './format';
+export * from './friends';
 export * from './gamification';
 export * from './leagues';
 export * from './market';
