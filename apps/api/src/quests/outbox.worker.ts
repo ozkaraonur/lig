@@ -11,6 +11,7 @@ import { CLOCK_MS, type MsClock } from '../common/clock';
 import { ENV, type Env } from '../config/env';
 import { DB, type Database } from '../db/db.module';
 import { awardBadges } from '../gamification/badge-store';
+import { awardStreak } from '../gamification/streak-store';
 import { evaluatePlayerQuests } from './quest-evaluator';
 
 export const OUTBOX_BATCH_SIZE = 100;
@@ -86,6 +87,8 @@ export class OutboxWorker implements OnApplicationBootstrap, OnApplicationShutdo
             }
             // Rozetler görevlerden sonra: "Görev Avcısı" az önce yazılan görev ilerlemesine bakar (K-030).
             await awardBadges(sp, first.tenant_id, first.player_id, now);
+            // Emir günleri seriye sayılır; eşik ödülleri burada da verilir (K-032).
+            await awardStreak(sp, first.tenant_id, first.player_id, now);
           });
           await tx.execute(sql`
             update outbox_events set processed_at = ${now.toISOString()}::timestamptz

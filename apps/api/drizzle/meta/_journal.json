@@ -99,6 +99,13 @@
       "when": 1790777080655,
       "tag": "0013_badges_titles_frames",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790789587200,
+      "tag": "0014_daily_streak_xp_joker",
+      "breakpoints": true
     }
   ]
 }

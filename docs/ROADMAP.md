@@ -57,8 +57,8 @@ Adım sırası: 1) şifreli anahtarlar ve yönetici girişi, 2) bağımlılık y
 Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı değiştirmez; ödüller yalnızca XP ve görünüm (NFR-06).
 
 - [ ] Kademe ligleri: Bronz, Gümüş, Altın, Platin, Efsane; ~50 kişilik gruplar, haftalık ilk %20 yükselir, son %20 düşer
-- [ ] Günlük seri: günde en az bir işlem ya da ziyaret, 1 gün kaçırma hakkı, 7 günde XP ya da XP jokeri
-- [ ] XP jokeri: bir hafta görev XP'si 2 kat
+- [x] Günlük seri: günde en az bir işlem ya da ziyaret, 1 gün kaçırma hakkı, 7 günde XP ya da XP jokeri (K-032)
+- [x] XP jokeri: bir hafta görev XP'si 2 kat (K-032)
 - [x] Yeni görev şablonları: çeşitlendirme ("3 farklı sektörden varlık al", K-029)
 - [ ] Karşılıksız günlük tahmin: doğruysa az XP, yanlışsa kayıp yok, günde 1
 - [x] Rozetler, unvanlar ve profil çerçeveleri (FR-10), "Tavan Avcısı" dahil (K-030, K-031). Temettü Emeklisi ve Açığa Satış Üstadı Faz 4'te

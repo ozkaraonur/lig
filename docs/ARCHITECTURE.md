@@ -106,6 +106,13 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 - Sıralama: `GET /leagues/:id/leaderboard` her satırda `title` ve `frame` döner (`AppearanceReader`, tenant'a bağlı okuma). Unvan seçimi eşik yeniden doğrulanarak gösterilir.
 - Web: ana ekranda "Profilim" (`profile-card.tsx`: rozetler, unvan ve çerçeve seçimi), sıralamada avatar çerçevesi ve unvan yazısı (`avatar.tsx`). Çerçeve süstür; anlamı yazıyla da verilir.
 
+## Günlük seri ve XP jokeri (K-032)
+
+- Seri, etkin günlerden (ziyaret ve emir günleri, Türkiye takvimi) `computeStreak` ile hesaplanır; saklanan sayaç yok. Art arda etkin günler arasında en fazla bir boş gün serbest.
+- Ödül: her 7 etkin günde 25 XP ve bir joker. `awardStreak` hem ziyarette (`POST /streak/visit`) hem `OutboxWorker`'da çalışır; XP defteri ve `xp_jokers` tekilliği çift ödülü engeller.
+- Joker: `activateJoker` oyuncu satırını kilitleyip tek etkin jokere izin verir, 7 gün sürer. `evaluatePlayerQuests` görev XP'sini yeni verdiğinde olay anında etkin joker varsa aynı miktarı `joker_bonus` olarak bir kez daha verir.
+- API: `GET /streak`, `POST /streak/visit`, `POST /streak/joker/activate` (yazanlar dakikada 20). Web: ana ekranda "Günlük seri" kartı (`streak-card.tsx`); ekran açılınca bugünü yazar.
+
 ## Webhook (FR-31) ve "Gerçek hesabıma geç" (FR-08)
 
 1. Oyuncu lig ekranında "Gerçek hesabıma geç"e dokunur; `tenants.real_trade_url` (yalnızca http/https) açılır.

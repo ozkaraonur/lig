@@ -16,7 +16,15 @@ export const ADMIN_ROLES = ['owner', 'editor', 'viewer'] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 /** XP kazanma sebepleri. Aynı sebep ve kaynak için bir oyuncuya bir kez XP verilir. */
-export const XP_REASONS = ['league_rank', 'league_participation', 'quest'] as const;
+export const XP_REASONS = [
+  'league_rank',
+  'league_participation',
+  'quest',
+  /** Günlük seri eşiği (K-032). */
+  'streak',
+  /** XP jokeri etkinken tamamlanan görevin ikinci yarısı (K-032). */
+  'joker_bonus',
+] as const;
 export type XpReason = (typeof XP_REASONS)[number];
 
 export const PLATFORM_EVENT_TYPES = ['real_trade', 'account_opened'] as const;

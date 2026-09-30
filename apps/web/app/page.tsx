@@ -8,6 +8,7 @@ import { LeagueList } from './league-list';
 import { ProfileCard } from './profile-card';
 import { QuestList } from './quest-list';
 import { RealAccountLink } from './real-account-link';
+import { StreakCard } from './streak-card';
 import { VirtualMoneyNotice } from './virtual-money-notice';
 
 type State =
@@ -69,6 +70,7 @@ export default function PlayerHome() {
           </div>
           <RealAccountLink platform={state.platform} />
           <LeagueList />
+          <StreakCard onXpChange={load} />
           <QuestList onProgress={load} />
           <ProfileCard displayName={state.player.displayName} />
           <VirtualMoneyNotice />
