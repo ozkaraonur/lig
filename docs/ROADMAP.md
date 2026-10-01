@@ -60,10 +60,10 @@ Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı
 - [x] Günlük seri: günde en az bir işlem ya da ziyaret, 1 gün kaçırma hakkı, 7 günde XP ya da XP jokeri (K-032)
 - [x] XP jokeri: bir hafta görev XP'si 2 kat (K-032)
 - [x] Yeni görev şablonları: çeşitlendirme ("3 farklı sektörden varlık al", K-029)
-- [ ] Karşılıksız günlük tahmin: doğruysa az XP, yanlışsa kayıp yok, günde 1
+- [~] Karşılıksız günlük tahmin: doğruysa az XP, yanlışsa kayıp yok, günde 1 (ertelendi, K-036: hukuki cevap bekliyor)
 - [x] Rozetler, unvanlar ve profil çerçeveleri (FR-10), "Tavan Avcısı" dahil (K-030, K-031). Temettü Emeklisi ve Açığa Satış Üstadı Faz 4'te
 - [x] Arkadaş ligi ve davet kodu (FR-09, K-033)
-- [ ] AI koç: davranış analizi, LLM, al/sat filtresi, yanıt kaydı (FR-11)
+- [~] AI koç: davranış analizi, LLM, al/sat filtresi, yanıt kaydı (FR-11) (ertelendi, K-036: pilot talebi bekliyor)
 - [x] CSV dışa aktarma (FR-25, K-035)
 
 ## Faz 3.5 · Pilot entegrasyonu
