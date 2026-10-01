@@ -328,3 +328,11 @@ Her karar: bağlam, karar, sonuç. Karar değişirse eskisi silinmez, "yerini al
 - **Biçim:** UTF-8 BOM (Excel Türkçe karakteri doğru açsın), virgül ayırıcı, CRLF, ondalık nokta. Başlıklar ASCII (`sira`, `oyuncu_kimligi`), makine okuması kolay olsun. Türkiye yerel ayarlı Excel'de virgül ayırıcı tek sütunda açılabilir; "Veri > Metinden sütunlara" gerekir. Pilotta platform ayırıcı ister ya da kendi aracıyla okursa ayrı karar.
 - **Mimari:** `apps/api/src/exports/` (`ExportsService`, `ExportsController`), `packages/shared/src/csv.ts` (`csvCell`, `toCsv`, sabitler). Metrik dosyası `MetricsService.report`'u kullanır (sayılar panelle aynı kaynaktan). Yeni migration yok: denetim eylemi metin olarak saklanır.
 - **Açık konular:** Dosya içeriği imzalı değil (indirenin kaydı denetimde, dosyanın kendisi doğrulanamaz). Büyük ligler için akış (stream) yok, dosya bellekte üretilir; 50.000 satır sınırı bunu sınırlar. Oyuncu etkinliği ve oyuncu adı dışa aktarımı yapılmadı.
+
+## K-036 · Karşılıksız tahmin ve AI koç ertelendi, Faz 3 kapandı
+
+- **Karar:** Faz 3'ün son iki maddesi (karşılıksız günlük tahmin, AI koç) yapılmadan Faz 3 kapatıldı. İptal değil, ertelendi.
+- **Karşılıksız günlük tahmin (K-017):** Gün sonu fiyat yönü tahmini, doğruysa az XP. "Kumar ya da bahis sayılır mı" sorusunun hukuki cevabı yok. Cevap gelmeden yazılan kod boşa gidebilir. **Geri açma koşulu:** hukukçudan yazılı cevap. Cevap olumluysa tasarım (günde 1, kayıp yok, yalnızca XP) K-017'deki haliyle uygulanır.
+- **AI koç (FR-11):** Ucu açık sorular (hangi LLM ve nerede çalışacağı, veri akışı, al/sat filtresi, maliyet, yatırım danışmanlığı sınırı) pilot müşteri olmadan cevaplanamıyor. Önce tasarım dokümanı yazmak da varsayıma dayanırdı. Yatırım tavsiyesi çizgisine en yakın özellik olduğu için erken eklemek getirisinden riskli. **Geri açma koşulu:** bir pilot müşterinin açık talebi. O zaman önce tasarım dokümanı (veri akışı, al/sat filtresi, yanıt kaydı, kapatma ve kullanım sınırı, hukuk soruları), sonra kod.
+- **Değişmeyenler:** Ödül yalnızca XP ve görünüm (NFR-06, FR-24). Kişiye özel al/sat önerisi yok. Bu iki özelliğin hiçbiri için şema ya da kod eklenmedi.
+- **Sonraki:** Faz 3.5 (pilot entegrasyonu).
