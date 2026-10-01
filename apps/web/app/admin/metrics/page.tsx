@@ -13,14 +13,19 @@ import { apiFetch } from '../../../lib/api';
 import { formatDateTime, LEAGUE_STATUS_LABELS } from '../../../lib/labels';
 import { adminErrorMessage } from '../admin-errors';
 import { AdminShell } from '../admin-shell';
+import { CsvDownloadButton } from '../csv-download-button';
 
 export default function MetricsPage() {
-  return <AdminShell>{() => <Metrics />}</AdminShell>;
+  return (
+    <AdminShell>
+      {(me) => <Metrics canExport={me.admin.role === 'owner' || me.admin.role === 'editor'} />}
+    </AdminShell>
+  );
 }
 
 const tr = (value: number) => value.toLocaleString('tr-TR');
 
-function Metrics() {
+function Metrics({ canExport }: { canExport: boolean }) {
   const [days, setDays] = useState<MetricRangeDays>(DEFAULT_METRIC_RANGE);
   const [report, setReport] = useState<MetricsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +61,12 @@ function Metrics() {
           </button>
         ))}
       </div>
+      {canExport && (
+        <p>
+          <CsvDownloadButton path={`/admin/export/metrics?days=${days}`} label="CSV olarak indir" />{' '}
+          <span className="muted">Toplu sayılar; oyuncu bilgisi içermez.</span>
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {!report || !totals || !breakdown ? (
         <p>Yükleniyor...</p>

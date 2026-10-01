@@ -488,3 +488,29 @@
 - Çoklu hesapla aynı gruba girip hesapları diğerlerinin üstüne taşımak mümkün (K-034).
 - Haftalık sıfırlama: her hafta yeni 100.000 TL; kademe, yalnızca etiket olarak haftalar arası taşınır.
 - Kademe kuralları kodda sabit, panelden değişmez.
+
+## CSV dışa aktarma: uygulama ayrıntısı (Faz 3, adım 6)
+
+**Kod:** `apps/api/src/exports/` (`exports.service.ts`, `exports.controller.ts`), `packages/shared/src/csv.ts`, web tarafında `apps/web/lib/download.ts` ve `app/admin/csv-download-button.tsx`. **Testler:** `exports.int.test.ts` (gerçek PostgreSQL ve Redis), `csv.test.ts`. Mutasyonla kanıtlandı: tenant koşulunu kaldırınca yabancı lig testi, kapanmış kontrolünü kaldırınca 409 testi, arkadaş ve kademe filtresini kaldırınca 404 testi, XP kaynak koşulunu kaldırınca XP testi, sırasız üye filtresini kaldırınca sıralama testi, satır sınırını kaldırınca sınır testi, denetim kaydını kaldırınca üç test, rol kısıtını kaldırınca iki test, formül korumasını kaldırınca iki test kırmızıya döndü.
+
+| Saldırı ya da hata                                                         | Sonuç                                                                                       | Test |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---- |
+| İzleyici ya da oturumsuz biri dosya indirme                                | Uç yalnızca sahip ve düzenleyiciye açık; izleyici 403, oturumsuz 401                        | ✓    |
+| Başka platformun ligini dışa aktarma                                       | Sorgu tenant'a bağlı; yabancı lig "yok" ile aynı 404                                        | ✓    |
+| Arkadaş ya da kademe ligini dışa aktararak üyelerini görme                 | Bu türler 404 (üyelerine özel)                                                              | ✓    |
+| Süren ligin ara sıralamasını dosyaya alma                                  | Lig kapanmamışsa 409; nihai sıra kapanışta donar                                            | ✓    |
+| Dosyadan oyuncunun gerçek adını öğrenme                                    | Dosyada yalnızca takma kimlik var, `displayName` yok (NFR-04)                               | ✓    |
+| Takma kimliği ya da lig adını `=HYPERLINK(...)` yapıp e-tabloda çalıştırma | Formül başlangıcı olan metin hücresinin başına tek tırnak konur; tırnak ve virgül kaçırılır | ✓    |
+| Çok büyük ligle sunucuyu şişirme ya da eksik dosya üretme                  | 50.000 satır sınırı; aşan lig kırpılmaz, 409 ile reddedilir                                 | ✓    |
+| Başka ligin ya da görevin XP'sini sıralamadaki XP sütununa karıştırma      | XP yalnızca o ligin `league_rank` ve `league_participation` kayıtlarından toplanır          | ✓    |
+| Dosyayı kayıtsız alıp sızdırma                                             | Her dışa aktarım `export.created` olarak yazılır; sıralamada kayıt ve okuma tek transaction | ✓    |
+| Denetim kaydı yazılamazken dosya verilmesi                                 | Kayıt düşerse transaction geri alınır, dosya dönmez                                         | -    |
+| Dosyanın sonradan değiştirilip platformdan geliyormuş gibi sunulması       | Kabul edildi: dosya imzalı değil; kim indirdi denetimde, içerik doğrulanamaz                | -    |
+| Oyuncunun kendi dosyasını almaya çalışması                                 | Uçlar yönetici oturumu ister; oyuncu çerezi geçmez (T6)                                     | -    |
+
+**Bilinen açık konular:**
+
+- Dosya imzalı değil; içeriğin değiştirilmediği dosyadan anlaşılmaz.
+- Dosya bellekte üretilir (en fazla 50.000 satır); akış yok.
+- Oyuncu adı ve oyuncu bazlı etkinlik dışa aktarımı yok (K-035).
+- Denetim kaydının yazılamaması durumunda dosya verilmemesi, kayıt hatası enjekte eden ayrı bir testle sınanmadı; transaction yapısına ve kayıt çıkarılınca düşen üç teste dayanır (metrik dosyası kaydı ayrı çağrıyla yazar, hata verirse dosya yine dönmez).

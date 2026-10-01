@@ -32,6 +32,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'quest.updated': 'Görevi düzenledi',
   'quest.deleted': 'Görevi sildi',
   'branding.changed': 'Marka ayarını değiştirdi',
+  'export.created': 'CSV dışa aktardı',
 };
 
 export const LEAGUE_STATUS_LABELS: Record<LeagueStatus, string> = {

@@ -12,6 +12,7 @@ import { GamificationModule } from './gamification/gamification.module';
 import { TiersModule } from './tiers/tiers.module';
 import { HealthModule } from './health/health.module';
 import { LeaguesModule } from './leagues/leagues.module';
+import { ExportsModule } from './exports/exports.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { OrdersModule } from './orders/orders.module';
 import { PricesModule } from './prices/prices.module';
@@ -44,6 +45,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AdminLeaguesModule,
     AdminSettingsModule,
     MetricsModule,
+    ExportsModule,
   ],
 })
 export class AppModule {}

@@ -12,6 +12,7 @@ import {
 } from '../../../lib/labels';
 import { adminErrorMessage } from '../admin-errors';
 import { AdminShell } from '../admin-shell';
+import { CsvDownloadButton } from '../csv-download-button';
 
 export default function LeaguesPage() {
   return (
@@ -62,6 +63,7 @@ function Leagues({ canEdit }: { canEdit: boolean }) {
                 <th>Tarih</th>
                 <th>Bakiye</th>
                 <th>Katılımcı</th>
+                {canEdit && <th>Dışa aktar</th>}
               </tr>
             </thead>
             <tbody>
@@ -82,6 +84,16 @@ function Leagues({ canEdit }: { canEdit: boolean }) {
                     {l.memberCount}
                     {l.maxMembers !== null && <span className="muted"> / {l.maxMembers}</span>}
                   </td>
+                  {canEdit && (
+                    <td>
+                      {l.closed && (l.type === 'weekly' || l.type === 'season') && (
+                        <CsvDownloadButton
+                          path={`/admin/export/leagues/${l.id}/ranking`}
+                          label="Sıralama CSV"
+                        />
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
