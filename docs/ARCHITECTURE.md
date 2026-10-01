@@ -128,6 +128,13 @@ Kapanmış ligin portföy ekranı kapanış fiyatlarıyla değerlenir; final sı
 - Kapanışta `LeagueCloseService` nihai sıralardan sonra `applyTierMovements` çağırır: emir veren üyelerde üst %20 bir kademe çıkar, alt %20 iner (`computeTierMovements`, saf fonksiyon, en az 5 katılımcı). Hareketler `tier_history` tablosunda, kapanışla aynı transaction'da.
 - Web: ana ekranda "Kademe ligi" paneli (`tier-panel.tsx`): kademe, bu haftaki grup bağlantısı, gruba katıl, son kademe değişimi.
 
+## CSV dışa aktarma (K-035)
+
+- `GET /admin/export/leagues/:leagueId/ranking` kapanmış haftalık ya da sezon ligin nihai sırasını, `GET /admin/export/metrics?days=` metrik toplamlarını CSV olarak döner (`apps/api/src/exports/`). Yalnızca sahip ve düzenleyici; her başarılı çağrı `export.created` denetim kaydı yazar.
+- Sıralama sorgusu ve denetim kaydı tek transaction'dadır. Oyuncu `externalId` ile yer alır, `displayName` yok. Dosya en fazla 50.000 satır (`EXPORT_MAX_ROWS`); aşan lig 409 ile reddedilir.
+- Metrik dosyası `MetricsService.report` ile aynı kaynaktan beslenir. CSV üretimi (`csvCell`, `toCsv`) `packages/shared/src/csv.ts` içinde saf ve testli; formül enjeksiyonuna karşı metin hücreleri korunur.
+- Web: yönetici metrik sayfasında "CSV olarak indir", lig listesinde kapanmış ligler için "Sıralama CSV". İndirme `fetch` ile (oturum çerezi), `lib/download.ts`.
+
 ## Webhook (FR-31) ve "Gerçek hesabıma geç" (FR-08)
 
 1. Oyuncu lig ekranında "Gerçek hesabıma geç"e dokunur; `tenants.real_trade_url` (yalnızca http/https) açılır.

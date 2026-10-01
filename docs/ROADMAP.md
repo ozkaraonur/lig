@@ -64,7 +64,7 @@ Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı
 - [x] Rozetler, unvanlar ve profil çerçeveleri (FR-10), "Tavan Avcısı" dahil (K-030, K-031). Temettü Emeklisi ve Açığa Satış Üstadı Faz 4'te
 - [x] Arkadaş ligi ve davet kodu (FR-09, K-033)
 - [ ] AI koç: davranış analizi, LLM, al/sat filtresi, yanıt kaydı (FR-11)
-- [ ] CSV dışa aktarma (FR-25)
+- [x] CSV dışa aktarma (FR-25, K-035)
 
 ## Faz 3.5 · Pilot entegrasyonu
 

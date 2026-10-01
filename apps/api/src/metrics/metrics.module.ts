@@ -16,5 +16,6 @@ import { METRICS_REPOSITORY, REAL_TRADE_CLICK_REPOSITORY } from './ports';
     { provide: METRICS_REPOSITORY, useClass: DrizzleMetricsRepository },
     { provide: REAL_TRADE_CLICK_REPOSITORY, useClass: DrizzleRealTradeClickRepository },
   ],
+  exports: [MetricsService],
 })
 export class MetricsModule {}

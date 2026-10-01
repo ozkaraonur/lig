@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS = [
   'quest.updated',
   'quest.deleted',
   'branding.changed',
+  'export.created',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
