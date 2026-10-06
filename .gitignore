@@ -13,6 +13,9 @@ next-env.d.ts
 *.key
 apps/mock-platform/keys/
 apps/mock-platform/keys-broker/
+# Cloudflare Tunnel: gerçek yapılandırma ve kimlik bilgisi dosyaları
+infra/cloudflared/config.yml
+infra/cloudflared/*.json
 
 # İşletim sistemi ve editör
 .DS_Store

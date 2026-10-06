@@ -50,6 +50,72 @@ Fiyatlar seed'den sonra en geç 30 saniye içinde akmaya başlar. Sahte platform
 
 Durdurmak için terminalde `Ctrl + C`, altyapıyı kapatmak için `npm run infra:down`.
 
+## Arkadaşlarla demo
+
+Birkaç tanıdığın kendi telefonundan ya da bilgisayarından denesin diye uygulamayı geçici olarak internete açar. Herkese açık bir yayın değildir. Bilgisayarın açık ve `npm run demo` çalışıyorken erişilir. Neden bu yapı: K-037.
+
+**Gerekenler:** Cloudflare'e eklenmiş bir alan adı (aşağıda `ALANADI.com`), ücretsiz Cloudflare hesabı, `cloudflared` programı (`winget install Cloudflare.cloudflared`).
+
+**1. Ayrı veritabanı.** Eski geliştirme verisi (bilinen parolalı yöneticiler) internete açılmasın:
+
+```powershell
+docker compose exec postgres psql -U lig -d postgres -c "CREATE DATABASE lig_demo"
+```
+
+**2. Sırları üret.** Her biri rastgele ve en az 16 karakter olmalı. Çıktıları kimseye göndermeyip yalnızca `.env`'e yaz:
+
+```powershell
+npm run secrets:new-key
+[Convert]::ToBase64String((1..24 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+İlk komut `SECRET_KEYS` için, ikinci komut her sır için (üç kez çalıştır: iki webhook sırrı ve yönetici parolası).
+
+**3. `.env` dosyasını doldur** (`.env.example` içindeki "Arkadaşlarla demo" bloğu):
+
+```
+DATABASE_URL=postgres://lig:lig_dev_password@localhost:5432/lig_demo
+WEB_ORIGIN=https://lig.ALANADI.com
+NEXT_PUBLIC_API_URL=https://lig-api.ALANADI.com
+NEXT_PUBLIC_MOCK_PLATFORM_URL=https://lig-platform.ALANADI.com
+TRUST_PROXY=127.0.0.1,::1
+SECRET_KEYS=...
+MOCK_PLATFORM_WEBHOOK_SECRET=...
+MOCK_BROKER_WEBHOOK_SECRET=...
+SEED_ADMIN_PASSWORD=...
+```
+
+`WEB_ORIGIN` yerel olmayan bir adres olunca geliştirme sırlarıyla API, seed ve sahte platform başlamaz.
+
+**4. Tüneli kur** (bir kez):
+
+```powershell
+cloudflared tunnel login
+cloudflared tunnel create lig-demo
+cloudflared tunnel route dns lig-demo lig.ALANADI.com
+cloudflared tunnel route dns lig-demo lig-api.ALANADI.com
+cloudflared tunnel route dns lig-demo lig-platform.ALANADI.com
+cloudflared tunnel route dns lig-demo lig-kurum.ALANADI.com
+copy infra\cloudflared\config.example.yml infra\cloudflared\config.yml
+```
+
+`config.yml` içindeki `ALANADI`, `TUNEL-KIMLIGI` ve `KULLANICI` değerlerini doldur (`create` komutu kimliği yazar). Dört adres aynı alan adının alt alanı olmalı: çerezler `SameSite=Strict`.
+
+**5. Sahte platformları Cloudflare Access ile koru.** Cloudflare panelinde Zero Trust > Access > Applications > Add > Self-hosted. `lig-platform.ALANADI.com` ve `lig-kurum.ALANADI.com` için, yalnızca arkadaşlarının e-posta adreslerini kabul eden bir politika (One-time PIN) kur. Bunu yapmazsan adresi bulan herkes sahte platformdan oyuncu kimliği alıp oynayabilir. `lig` ve `lig-api` Access arkasına alınmaz.
+
+**6. Çalıştır.** Üç ayrı terminalde:
+
+```powershell
+npm run db:migrate
+npm run demo                  # web'i derler, API, web ve sahte platformu başlatır
+npm run db:seed               # demo açıkken, ikinci terminalde
+cloudflared tunnel --config infra\cloudflared\config.yml run lig-demo   # üçüncü terminalde
+```
+
+Arkadaşlarına `https://lig-platform.ALANADI.com` (kripto) ve `https://lig-kurum.ALANADI.com` (BIST) adreslerini ver; e-posta koduyla girip bir oyuncu seçerler. Yönetim paneli `https://lig.ALANADI.com/admin`, giriş `SEED_ADMIN_PASSWORD` ile.
+
+Kapatınca erişim de kapanır. Demo veritabanını silmek için `DROP DATABASE lig_demo`.
+
 ## Sık kullanılan komutlar
 
 | Komut                                                                         | Ne yapar                                                                                 |

@@ -514,3 +514,28 @@
 - Dosya bellekte üretilir (en fazla 50.000 satır); akış yok.
 - Oyuncu adı ve oyuncu bazlı etkinlik dışa aktarımı yok (K-035).
 - Denetim kaydının yazılamaması durumunda dosya verilmemesi, kayıt hatası enjekte eden ayrı bir testle sınanmadı; transaction yapısına ve kayıt çıkarılınca düşen üç teste dayanır (metrik dosyası kaydı ayrı çağrıyla yazar, hata verirse dosya yine dönmez).
+
+## Arkadaşlarla demo (tünel): uygulama ayrıntısı (Faz 3.5, adım 1)
+
+**Kod:** `apps/api/src/config/env.ts` (`TRUST_PROXY`, `isLoopbackOrigin`, `isTrustedProxyAddress`), `apps/api/src/app.setup.ts` (`trustProxyOption`), `apps/api/src/db/seed-guards.ts`, `apps/mock-platform/src/webhooks.ts` (`assertWebhookSecretSafe`), `apps/web/next.config.ts`, `infra/cloudflared/config.example.yml`. **Testler:** `env.test.ts`, `app.setup.test.ts` (gerçek Fastify, sahte `X-Forwarded-For`), `seed-guards.test.ts`, `webhooks.test.ts`. `127.0.0.1.ornek.dev` adının yerel sayıldığı hata test tarafından yakalandı ve düzeltildi.
+
+| Saldırı ya da hata                                                             | Sonuç                                                                                            | Test |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ---- |
+| İstemci `X-Forwarded-For` yazıp hız sınırını ya da denetim IP'sini kandırma    | Yalnızca güvenilen vekilin (127.0.0.1) getirdiği bağlantıdaki başlık okunur; soldaki uydurma yok | ✓    |
+| İnternetten doğrudan API'ye bağlanıp aynı başlığı yazma                        | Bağlantı güvenilen adresten gelmediği için başlık yok sayılır                                    | ✓    |
+| Tünel arkasında tüm isteklerin tek IP'den görünmesi (hız sınırı herkesi sayar) | `TRUST_PROXY=127.0.0.1,::1` ile gerçek istemci IP'si okunur                                      | ✓    |
+| `TRUST_PROXY=*` ya da alan adı yazarak her başlığa güvenme                     | Yalnızca IP ve CIDR kabul edilir, başka değer uygulamayı başlatmaz                               | ✓    |
+| Demoyu depodaki herkese açık şifreleme anahtarıyla internete açma              | Yerel olmayan `WEB_ORIGIN` ile `SECRET_KEYS` zorunlu, yoksa API başlamaz                         | ✓    |
+| Depodaki webhook sırrıyla sahte "gerçek işlem" bildirimi gönderme              | Genel adreste seed ve sahte platform geliştirme sırrını reddeder; sır en az 16 karakter          | ✓    |
+| Depodaki yönetici parolasıyla panele girmeyi deneme                            | Genel adreste seed geliştirme parolasını ve 16 karakterden kısa parolayı reddeder                | ✓    |
+| `127.0.0.1.ornek.dev` gibi adla "yerel" kontrolünü atlatma                     | Yalnızca tam IPv4 ve `localhost`, `::1` yerel sayılır                                            | ✓    |
+| Web sürecinin veritabanı parolasına ya da şifreleme anahtarına erişmesi        | Web kök `.env`'den yalnızca `NEXT_PUBLIC_` ile başlayanları alır                                 | -    |
+| Sahte platformun token ucuna herkesin erişmesi (adres sızarsa herkes oynar)    | Kod çözmez: `lig-platform` ve `lig-kurum` Cloudflare Access arkasına konur (kullanıcı adımı)     | -    |
+| Eski veritabanındaki geliştirme parolalı yöneticinin internete açılması        | Seed var olan yöneticiyi ezmez; demo için ayrı veritabanı (`lig_demo`) kullanılır (belgede)      | -    |
+
+**Bilinen açık konular:**
+
+- Access arkasına alma ve ayrı veritabanı kullanımı belgeye bağlı kullanıcı adımlarıdır, kod zorlamaz.
+- Web'in yalnızca `NEXT_PUBLIC_` değerlerini yüklemesi testle sınanmadı (derleme yapılandırması).
+- Tünel kapanınca erişim kapanır; bilgisayar açık olmalıdır. Sunucuya geçiş Faz 4.
+- Aynı alan adı altındaki bir alt alan (ör. bir başkasının eklediği) çerez sitesini paylaşır; alan adında yalnızca bu dört alt alan bulunmalı.

@@ -243,6 +243,10 @@ Oyuncu başına, IP'ye değil (`auth/player-rate-limit.guard.ts`): lig okumalar�
 - Veritabanı ve Redis kodu ayrıca gerçek servislere karşı `*.int.test.ts` ile test edilir (K-008). Ham SQL'de tablo adları açıkça yazılır.
 - Gereksinim kodları (FR-xx, NFR-xx) commit, PR ve test açıklamalarında referans verilir.
 
+## Arkadaşlarla demo erişimi (K-037)
+
+Yerel çalışma (`npm run dev`) değişmez. Arkadaşlara açmak için servisler yine yalnızca 127.0.0.1'de dinler; bir Cloudflare Tunnel dört alt alanı yerel portlara bağlar: `lig` → web 3000, `lig-api` → API 4000, `lig-platform` → sahte platform 4100, `lig-kurum` → sahte aracı kurum 4200. Dördü aynı alan adının altında olduğu için `SameSite=Strict` çerezler ve CORS (`WEB_ORIGIN`) olduğu gibi çalışır. API tünelin arkasında `TRUST_PROXY=127.0.0.1,::1` ile gerçek istemci IP'sini okur. Web, adresleri derleme anında `NEXT_PUBLIC_API_URL` ve `NEXT_PUBLIC_MOCK_PLATFORM_URL`'den gömer; bu yüzden demo `npm run demo` ile web'i derleyip çalıştırır. Genel adreste geliştirme sırları kabul edilmez. Kurulum adımları README'de.
+
 ## Nerede ne var
 
 - Gereksinimler ve diyagramlar: Claude'daki "Lig Modülü Tasarım Dosyası"

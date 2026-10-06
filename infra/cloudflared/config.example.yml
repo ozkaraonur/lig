@@ -1,0 +1,18 @@
+# Arkadaşlarla demo için Cloudflare Tunnel yapılandırması (K-037). README "Arkadaşlarla demo" bölümüne bak.
+# Kopyala: infra/cloudflared/config.yml (repoya girmez), ALANADI ve TUNEL-KIMLIGI değerlerini doldur.
+# Dört adres aynı alan adının birinci seviye alt alanlarıdır: çerezler SameSite=Strict olduğu için web ve API
+# aynı "site" altında olmak zorunda, tek seviye alt alan Cloudflare'in ücretsiz sertifikasıyla da örtüşür.
+tunnel: TUNEL-KIMLIGI
+credentials-file: C:\Users\KULLANICI\.cloudflared\TUNEL-KIMLIGI.json
+
+ingress:
+  - hostname: lig.ALANADI.com
+    service: http://127.0.0.1:3000
+  - hostname: lig-api.ALANADI.com
+    service: http://127.0.0.1:4000
+  - hostname: lig-platform.ALANADI.com
+    service: http://127.0.0.1:4100
+  - hostname: lig-kurum.ALANADI.com
+    service: http://127.0.0.1:4200
+  # Eşleşmeyen her şey reddedilir.
+  - service: http_status:404

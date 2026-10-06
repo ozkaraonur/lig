@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { platformEventWebhook, WEBHOOK_HEADERS } from '@lig/shared';
 import { describe, expect, it } from 'vitest';
-import { WebhookSender } from './webhooks.js';
+import { assertWebhookSecretSafe, DEV_WEBHOOK_SECRET, WebhookSender } from './webhooks.js';
 
 describe('WebhookSender', () => {
   function capture() {
@@ -45,5 +45,32 @@ describe('WebhookSender', () => {
     const again = await sender.replayLast();
     expect(again?.eventId).toBe(first.eventId);
     expect(JSON.parse(calls[1]!.init.body as string).eventId).toBe(first.eventId);
+  });
+});
+
+describe('assertWebhookSecretSafe', () => {
+  const rastgele = 'rastgele-uretilmis-uzun-bir-gizli-deger';
+
+  it('allows the development secret only on a local setup', () => {
+    for (const web of ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:3000']) {
+      expect(() => assertWebhookSecretSafe(DEV_WEBHOOK_SECRET, web, 'development'), web).not.toThrow();
+    }
+  });
+
+  it('refuses the development secret on a public address or in production', () => {
+    expect(() => assertWebhookSecretSafe(DEV_WEBHOOK_SECRET, 'https://web.ornek.dev', undefined)).toThrow(
+      'webhook',
+    );
+    // Yerel gibi görünen alan adı yerel sayılmaz.
+    expect(() =>
+      assertWebhookSecretSafe(DEV_WEBHOOK_SECRET, 'http://127.0.0.1.ornek.dev', undefined),
+    ).toThrow('webhook');
+    expect(() => assertWebhookSecretSafe(DEV_WEBHOOK_SECRET, 'http://localhost:3000', 'production')).toThrow(
+      'webhook',
+    );
+  });
+
+  it('accepts any other secret on a public address', () => {
+    expect(() => assertWebhookSecretSafe(rastgele, 'https://web.ornek.dev', 'production')).not.toThrow();
   });
 });

@@ -1,7 +1,18 @@
 import { existsSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
 import { parseKeyring } from '../secrets/local-secret-cipher';
+
+/** IP adresi ya da CIDR (örn. 10.0.0.0/8). Joker ve alan adı kabul edilmez. */
+export function isTrustedProxyAddress(value: string): boolean {
+  const [address, prefix, ...rest] = value.split('/');
+  if (rest.length > 0 || address === undefined) return false;
+  const version = isIP(address);
+  if (version === 0) return false;
+  if (prefix === undefined) return true;
+  return /^\d{1,3}$/.test(prefix) && Number(prefix) <= (version === 4 ? 32 : 128);
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -11,6 +22,18 @@ const envSchema = z.object({
   API_HOST: z.string().min(1).default('127.0.0.1'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   WEB_ORIGIN: z.url().default('http://localhost:3000'),
+  /**
+   * API'ye bağlantıyı getirmesine güvenilen ters vekil adresleri, virgülle ayrılmış IP ya da CIDR. Cloudflare
+   * Tunnel aynı bilgisayarda çalıştığı için `127.0.0.1,::1`. Gerçek istemci IP'si (hız sınırı, denetim kaydı)
+   * X-Forwarded-For'dan, güvenilen adreslerin ötesindeki ilk adres olarak alınır; istemcinin kendi yazdığı
+   * soldaki değerlere güvenilmez. Boşsa vekil yok: başlık hiç okunmaz.
+   */
+  TRUST_PROXY: z
+    .string()
+    .trim()
+    .default('')
+    .transform((v) => (v === '' ? [] : v.split(',').map((a) => a.trim())))
+    .refine((list) => list.every(isTrustedProxyAddress)),
   /**
    * Arka plan işleri (fiyat alıcı, ileride görev kuyruğu) bu süreçte çalışsın mı. Üretimde API'yi birden çok
    * kopya çalıştırırken işler yalnızca birinde açık olur; aynı işi her kopya tekrar yapmaz (K-007).
@@ -41,9 +64,20 @@ const envSchema = z.object({
     }),
 });
 
-const checkedEnvSchema = envSchema.refine((env) => env.NODE_ENV !== 'production' || env.SECRET_KEYS, {
-  path: ['SECRET_KEYS'],
-});
+/** Adres bu bilgisayara mı ait (localhost, 127.x.x.x, ::1)? */
+export function isLoopbackOrigin(origin: string): boolean {
+  const host = new URL(origin).hostname;
+  return host === 'localhost' || host === '[::1]' || /^127(\.\d{1,3}){3}$/.test(host);
+}
+
+/**
+ * Üretim ya da herkese açık bir adres (örn. tünelle arkadaşlara açılan demo) varsa herkesin bildiği geliştirme
+ * anahtarı kabul edilmez: veritabanı yedeği ya da sızıntı, depodaki anahtarla açılabilirdi (K-015, K-037).
+ */
+const checkedEnvSchema = envSchema.refine(
+  (env) => (env.NODE_ENV !== 'production' && isLoopbackOrigin(env.WEB_ORIGIN)) || env.SECRET_KEYS,
+  { path: ['SECRET_KEYS'] },
+);
 
 export type Env = z.infer<typeof envSchema>;
 
