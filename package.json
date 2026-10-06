@@ -13,6 +13,7 @@
   "scripts": {
     "postinstall": "npm run build -w @lig/shared",
     "dev": "npm run shared:build && concurrently -n api,web,mock -c blue,magenta,yellow \"npm run dev -w @lig/api\" \"npm run dev -w @lig/web\" \"npm run dev -w @lig/mock-platform\"",
+    "demo": "npm run shared:build && npm run build -w @lig/web && concurrently -n api,web,mock -c blue,magenta,yellow \"npm run dev -w @lig/api\" \"npm run start -w @lig/web\" \"npm run dev -w @lig/mock-platform\"",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . --max-warnings=0",

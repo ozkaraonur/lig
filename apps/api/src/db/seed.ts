@@ -15,9 +15,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import { hashPassword } from '../admin-auth/password-hasher';
-import { loadEnv } from '../config/env';
+import { isLoopbackOrigin, loadEnv } from '../config/env';
 import { secretContext, type SecretCipher } from '../secrets/secret-cipher';
 import { createSecretCipher } from '../secrets/secrets.module';
+import { assertSeedSecretsSafe, DEV_ADMIN_PASSWORD, DEV_WEBHOOK_SECRET } from './seed-guards';
 import * as schema from './schema';
 
 const publicKeyResponse = z.object({
@@ -98,8 +99,6 @@ interface SeedTenant {
   webhookSecretEnv: string;
 }
 
-const DEV_WEBHOOK_SECRET = 'dev-only-webhook-secret-change-me';
-
 const TENANTS: SeedTenant[] = [
   {
     name: 'Sahte Platform',
@@ -112,7 +111,7 @@ const TENANTS: SeedTenant[] = [
       past: 'Geçen Haftanın Ligi',
     },
     theme: { primaryColor: DEFAULT_PRIMARY_COLOR, themeMode: 'dark' },
-    admin: { email: 'yonetici@sahte-platform.test', password: 'gelistirme-yonetici-parolasi' },
+    admin: { email: 'yonetici@sahte-platform.test', password: DEV_ADMIN_PASSWORD },
     webhookSecretEnv: 'MOCK_PLATFORM_WEBHOOK_SECRET',
   },
   {
@@ -126,7 +125,7 @@ const TENANTS: SeedTenant[] = [
       past: 'Geçen Haftanın BIST Ligi',
     },
     theme: { primaryColor: '#1d4ed8', themeMode: 'light' },
-    admin: { email: 'yonetici@sahte-araci-kurum.test', password: 'gelistirme-yonetici-parolasi' },
+    admin: { email: 'yonetici@sahte-araci-kurum.test', password: DEV_ADMIN_PASSWORD },
     webhookSecretEnv: 'MOCK_BROKER_WEBHOOK_SECRET',
   },
 ];
@@ -193,6 +192,13 @@ async function seedTenant(
 
   // Sahte platformla aynı değer olmalı (apps/mock-platform/src/webhooks.ts). Üretimde platform başına rastgele.
   const webhookSecret = process.env[config.webhookSecretEnv] ?? DEV_WEBHOOK_SECRET;
+  const publicDeploy = !isLoopbackOrigin(process.env.WEB_ORIGIN ?? 'http://localhost:3000');
+  // Herkese açık kurulumda (tünel demosu, K-037) depodaki bilinen sırlarla kurulum yapılmaz.
+  assertSeedSecretsSafe({
+    publicDeploy,
+    webhookSecret,
+    adminPassword: process.env.SEED_ADMIN_PASSWORD ?? config.admin.password,
+  });
   // Anahtar şifreli yazılır (K-015). Bağlam tenant kimliğini içerdiği için kayıt açıldıktan sonra yazılır.
   const webhookSecretCiphertext = await cipher.encrypt(
     webhookSecret,

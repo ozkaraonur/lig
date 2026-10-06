@@ -4,7 +4,7 @@ import { loadOrCreateKeys } from './keys.js';
 import { BIST_MARKETS, PriceSimulator } from './prices.js';
 import { RealPriceFeed } from './real-prices.js';
 import { buildServer } from './server.js';
-import { DEV_WEBHOOK_SECRET, WebhookSender } from './webhooks.js';
+import { assertWebhookSecretSafe, DEV_WEBHOOK_SECRET, WebhookSender } from './webhooks.js';
 
 const rootEnv = fileURLToPath(new URL('../../../.env', import.meta.url));
 if (process.env.NODE_ENV !== 'production' && existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -32,9 +32,7 @@ const realPrices = realPriceMode
   : undefined;
 const ligApiUrl = process.env.LIG_API_URL ?? 'http://127.0.0.1:4000';
 const webhookSecret = process.env.MOCK_PLATFORM_WEBHOOK_SECRET ?? DEV_WEBHOOK_SECRET;
-if (process.env.NODE_ENV === 'production' && webhookSecret === DEV_WEBHOOK_SECRET) {
-  throw new Error('MOCK_PLATFORM_WEBHOOK_SECRET must be set in production');
-}
+assertWebhookSecretSafe(webhookSecret, webUrl, process.env.NODE_ENV);
 const webhooks = new WebhookSender({ url: `${ligApiUrl}/webhooks/platform`, issuer, secret: webhookSecret });
 const app = await buildServer({ keys, issuer, webUrl, prices, realPrices, webhooks, logger: true });
 
@@ -66,6 +64,7 @@ const brokerIssuer = process.env.MOCK_BROKER_ISSUER ?? 'mock-broker';
 const brokerKeys = loadOrCreateKeys(fileURLToPath(new URL('../keys-broker/', import.meta.url)));
 const brokerPrices = new PriceSimulator(BIST_MARKETS);
 const brokerSecret = process.env.MOCK_BROKER_WEBHOOK_SECRET ?? DEV_WEBHOOK_SECRET;
+assertWebhookSecretSafe(brokerSecret, webUrl, process.env.NODE_ENV);
 const brokerWebhooks = new WebhookSender({
   url: `${ligApiUrl}/webhooks/platform`,
   issuer: brokerIssuer,

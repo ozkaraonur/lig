@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseEnv } from './env';
+import { isLoopbackOrigin, isTrustedProxyAddress, parseEnv } from './env';
 
 const base = {
   DATABASE_URL: 'postgres://lig:secret@localhost:5432/lig',
@@ -57,5 +57,44 @@ describe('parseEnv', () => {
 
   it('treats an empty SECRET_KEYS as unset in development', () => {
     expect(parseEnv({ ...base, SECRET_KEYS: '' }).SECRET_KEYS).toBeUndefined();
+  });
+
+  it('requires SECRET_KEYS for a public origin even outside production (tunnel demo, K-037)', () => {
+    const key = Buffer.alloc(32, 7).toString('base64');
+    const publicOrigin = { ...base, WEB_ORIGIN: 'https://web.ornek.dev' };
+    expect(() => parseEnv(publicOrigin)).toThrow('SECRET_KEYS');
+    expect(parseEnv({ ...publicOrigin, SECRET_KEYS: `k1:${key}` }).WEB_ORIGIN).toBe('https://web.ornek.dev');
+    // Yerel adreslerde geliştirme anahtarı serbest kalır.
+    expect(parseEnv({ ...base, WEB_ORIGIN: 'http://127.0.0.1:3000' }).SECRET_KEYS).toBeUndefined();
+  });
+
+  it('reads TRUST_PROXY as a list of addresses and rejects anything else', () => {
+    expect(parseEnv(base).TRUST_PROXY).toEqual([]);
+    expect(parseEnv({ ...base, TRUST_PROXY: '127.0.0.1, ::1' }).TRUST_PROXY).toEqual(['127.0.0.1', '::1']);
+    for (const bad of ['*', 'true', 'cloudflare.com', '127.0.0.1/99', '10.0.0.0/8/8', '127.0.0.1,']) {
+      expect(() => parseEnv({ ...base, TRUST_PROXY: bad }), bad).toThrow('TRUST_PROXY');
+    }
+  });
+});
+
+describe('isTrustedProxyAddress', () => {
+  it('accepts IPs and CIDR ranges only', () => {
+    for (const ok of ['127.0.0.1', '::1', '10.0.0.0/8', 'fd00::/8'])
+      expect(isTrustedProxyAddress(ok), ok).toBe(true);
+    for (const bad of ['', 'localhost', '300.1.1.1', '10.0.0.0/33', '::1/129', '10.0.0.0/x']) {
+      expect(isTrustedProxyAddress(bad), bad).toBe(false);
+    }
+  });
+});
+
+describe('isLoopbackOrigin', () => {
+  it('accepts only addresses of this machine', () => {
+    for (const o of ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:3000']) {
+      expect(isLoopbackOrigin(o), o).toBe(true);
+    }
+    // Yerel gibi görünen ama başka bir alan adına ait adresler yerel sayılmaz.
+    for (const o of ['https://web.ornek.dev', 'http://localhost.ornek.dev', 'http://127.0.0.1.ornek.dev']) {
+      expect(isLoopbackOrigin(o), o).toBe(false);
+    }
   });
 });

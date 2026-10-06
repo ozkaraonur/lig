@@ -70,13 +70,14 @@ Oyunlaştırma kapsamı K-017'de. Hiçbiri portföy değerini ya da sıralamayı
 
 İlk pilot müşteriyle başlar. Sahte platformun yerine gerçek platform bağlanır; sahte platform testlerde kalır.
 
-- [ ] Gerçek fiyat akışı (FR-30): platformun fiyat ucu ya da lisanslı veri sağlayıcı (BIST lisans sorusu cevaplanmış olmalı)
+- [ ] Gerçek fiyat akışı (FR-30): platformun fiyat ucu ya da lisanslı veri sağlayıcı (BIST lisans sorusu cevaplanmış olmalı). Demo için kripto tarafı sahte platformda `MOCK_PLATFORM_PRICE_MODE=real` ile zaten açılabiliyor (Faz 2, adım 8); BIST simüle kalır
 - [ ] Gerçek giriş: platformun imzaladığı oyuncu token'ı, anahtar değişim (rotasyon) süreci (FR-01)
 - [ ] Gerçek webhook: platformun işlem olayları, anahtar rotasyonu (FR-31)
 - [ ] Davet e-postası (K-020)
 - [ ] Anahtar yönetimi: OpenBao Transit adaptörü, ana anahtar uygulama ortamından çıkar (K-015)
 - [ ] Çoklu hesap: platformdan "kimliği doğrulanmış hesap" bilgisi; lig katılım koşulu olarak da kullanılır (K-018, K-021)
 - [ ] WebView içinde gerçek cihaz testi: iOS ve Android, çerez davranışı (NFR-08)
+- [x] Demo erişimi: arkadaşlarla deneme için Cloudflare Tunnel, alt alan adları, `TRUST_PROXY`, genel adreste geliştirme sırlarının reddi (K-037). Pilot gerektirmez; gerçek müşteri maddeleri açık kalır
 - [ ] Veri konumu kararı: Türkiye'de barındırma gerekiyor mu (NFR-05). SPK'ya tabi kripto platformlarının birincil ve ikincil sistemleri yurt içinde olmalı; lig modülünün bu kapsama girip girmediği hukukçuya soruluyor
 
 ## Faz 4 · Sağlamlaştırma ve yayın

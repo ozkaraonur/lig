@@ -3,13 +3,15 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { configureApp } from './app.setup';
-import { ENV, type Env } from './config/env';
+import { configureApp, trustProxyOption } from './app.setup';
+import { ENV, type Env, loadEnv } from './config/env';
 
 async function bootstrap(): Promise<void> {
+  // Güvenilir vekil listesi adaptör kurulurken gerekir; ortam ayarı Nest modülünden önce okunur.
+  const trustProxy = trustProxyOption(loadEnv().TRUST_PROXY);
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ trustProxy: false, bodyLimit: 64 * 1024 }),
+    new FastifyAdapter({ trustProxy, bodyLimit: 64 * 1024 }),
     // Webhook imzası ham gövde üzerinden doğrulanır (FR-31).
     { rawBody: true },
   );

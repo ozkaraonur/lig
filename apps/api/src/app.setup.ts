@@ -21,6 +21,15 @@ export async function configureApp(
   app.useGlobalFilters(new AllExceptionsFilter());
 }
 
+/**
+ * Fastify'ın `trustProxy` ayarı. Liste boşsa X-Forwarded-For hiç okunmaz (istemci kendi IP'sini yazamaz).
+ * Doluysa yalnızca bu adreslerden gelen bağlantıdaki başlığa güvenilir ve istemci IP'si olarak güvenilmeyen
+ * ilk adres (sağdan) alınır. Fastify'ın sayı biçimi (kaç sıçrama) bu davranışı vermediği için liste kullanılır.
+ */
+export function trustProxyOption(trusted: readonly string[]): string[] | false {
+  return trusted.length > 0 ? [...trusted] : false;
+}
+
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**

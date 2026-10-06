@@ -4,6 +4,23 @@ import { type PlatformEventWebhook, WEBHOOK_HEADERS } from '@lig/shared';
 /** Yalnızca yerel geliştirme için. Üretimde her platformun kendi rastgele anahtarı olur. */
 export const DEV_WEBHOOK_SECRET = 'dev-only-webhook-secret-change-me';
 
+/** Adres bu bilgisayara mı ait (localhost, 127.x.x.x, ::1)? */
+function isLoopbackUrl(url: string): boolean {
+  const host = new URL(url).hostname;
+  return host === 'localhost' || host === '[::1]' || /^127(\.\d{1,3}){3}$/.test(host);
+}
+
+/**
+ * Üretimde ya da herkese açık bir adreste (tünelle açılan demo, K-037) depodaki bilinen geliştirme sırrı
+ * kabul edilmez: onu bilen herkes sahte bir "gerçek işlem" bildirimi gönderebilirdi.
+ */
+export function assertWebhookSecretSafe(secret: string, webUrl: string, nodeEnv: string | undefined): void {
+  const publicDeploy = nodeEnv === 'production' || !isLoopbackUrl(webUrl);
+  if (publicDeploy && secret === DEV_WEBHOOK_SECRET) {
+    throw new Error('Herkese açık kurulumda webhook sırrı geliştirme değeri olamaz.');
+  }
+}
+
 export interface WebhookSenderOptions {
   /** Lig API'sinin webhook adresi, ör. http://127.0.0.1:4000/webhooks/platform */
   url: string;
